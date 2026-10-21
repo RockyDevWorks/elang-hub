@@ -1,0 +1,38 @@
+name: Implementation task
+description: Track a scoped ELANG Hub implementation task
+title: "[HUB][v0.1.0] "
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: Kiro task ID
+      description: Stable task identifier from the Hub implementation checklist
+      placeholder: H0101
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective and requirements
+      description: Describe the work and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Link prerequisite tasks and ELANG SDK contracts
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Verification and tests
+      placeholder: "- [ ] ..."
+    validations:
+      required: true

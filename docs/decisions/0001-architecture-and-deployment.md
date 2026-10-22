@@ -9,6 +9,7 @@ Accepted
 ELANG Hub v0.1.0 is a read-only phoneme viewer that accepts `.elang` v0.1.0 packages, validates them via the ELANG Rust SDK, and renders phonological data in a web interface.
 
 Key constraints:
+
 - The authoritative ELANG validation logic lives in `elang-rs` (Rust)
 - `elang-rs` does not currently provide WASM bindings
 - Server-side execution of the Rust CLI is required for validation
@@ -28,6 +29,7 @@ Key constraints:
 - **Deployment:** Cloudflare Pages via `@sveltejs/adapter-cloudflare`
 
 **Rationale:**
+
 - SvelteKit provides excellent DX, flexible rendering (SSR/SSG/CSR), and strong TypeScript support
 - Tailwind CSS enables rapid UI development with consistent design
 - shadcn-svelte delivers accessible, well-tested components without heavy framework lock-in
@@ -43,6 +45,7 @@ Key constraints:
 - Stateless, no persistent storage in v0.1.0
 
 **Rationale:**
+
 - Fly.io natively supports running compiled Rust binaries in Docker containers
 - Clean architectural separation: frontend (UI/presentation) vs. backend (validation logic)
 - Fly.io free tier provides 3 shared VMs (256MB RAM) — sufficient for v0.1.0 validation workload

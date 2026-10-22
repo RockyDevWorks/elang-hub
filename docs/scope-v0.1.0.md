@@ -37,35 +37,41 @@ v0.1.0 — Phoneme Viewer
 The following features are **NOT** included in v0.1.0:
 
 ### Authentication & Accounts
+
 - User registration
 - User login
 - User profiles
 - Session persistence
 
 ### Publishing
+
 - Persistent package storage
 - Package versioning
 - Package ownership
 - Package metadata editing
 
 ### Discovery & Search
+
 - Package discovery interface
 - Search functionality
 - Filtering and sorting
 - Featured packages or rankings
 
 ### Social Features
+
 - User comments
 - Package ratings or reviews
 - Follows or subscriptions
 - Activity feeds
 
 ### Community
+
 - Discussion forums
 - Package collections
 - User-created content beyond packages
 
 ### Advanced Features
+
 - Duplicate package detection
 - Content moderation
 - Leaderboards or rankings
@@ -75,16 +81,19 @@ The following features are **NOT** included in v0.1.0:
 ## Technical Boundaries
 
 ### Validation
+
 - All validation logic delegated to authoritative `elang-rs` SDK
 - No custom parsing or reimplementation of ELANG normative rules
 - Validation results are not cached or persisted
 
 ### Data Storage
+
 - No database
 - No persistent package storage
 - Session-based file processing only
 
 ### ELANG Version Support
+
 - **Supported:** ELANG v0.1.0 binary container format only
 - **Supported:** ELD (phoneme inventory) schema v0.1.0
 - Future ELANG versions require explicit compatibility declaration

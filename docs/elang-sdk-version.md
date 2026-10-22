@@ -15,13 +15,13 @@ The validation backend will pin to a specific `elang-rs` release tag once the SD
 
 ## Compatibility Matrix
 
-| Hub Version | elang-rs Version | ELANG Spec | Notes |
-|-------------|-----------------|------------|-------|
-| v0.1.0      | TBD             | 0.0.1-1    | Awaiting elang-rs v0.1.0 release |
+| Hub Version | elang-rs Version | ELANG Spec | Notes                            |
+| ----------- | ---------------- | ---------- | -------------------------------- |
+| v0.1.0      | TBD              | 0.0.1-1    | Awaiting elang-rs v0.1.0 release |
 
 ## Update History
 
-*No SDK updates yet. This section will track version changes and compatibility notes.*
+_No SDK updates yet. This section will track version changes and compatibility notes._
 
 ## References
 

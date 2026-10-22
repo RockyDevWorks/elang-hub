@@ -29,12 +29,14 @@ This document defines how ELANG Hub integrates with the authoritative `elang-rs`
 ### elang-rs Integration
 
 **Current approach (v0.1.0):**
+
 - Validation backend (Fly.io) runs the compiled `elang` CLI binary
 - CLI operations used:
   - `elang validate <file>` — Execute validation stages 1–12
   - (Future: `elang inspect` and `elang verify` for partial validation modes)
 
 **Pinning strategy:**
+
 - Pin to a specific `elang-rs` Git tag or commit SHA in backend Dockerfile
 - Document the pinned version in `docs/elang-sdk-version.md`
 - Update only when:
@@ -45,8 +47,8 @@ This document defines how ELANG Hub integrates with the authoritative `elang-rs`
 ### Version Compatibility Matrix
 
 | Hub Version | ELANG Spec Version | elang-rs Version | Binary Container Version |
-|-------------|-------------------|------------------|--------------------------|
-| v0.1.0      | 0.0.1-1           | TBD (pinned tag) | 0.1.0                    |
+| ----------- | ------------------ | ---------------- | ------------------------ |
+| v0.1.0      | 0.0.1-1            | TBD (pinned tag) | 0.1.0                    |
 
 ## Update Policy
 
@@ -75,14 +77,17 @@ This document defines how ELANG Hub integrates with the authoritative `elang-rs`
 ### When `elang-rs` Introduces Breaking Changes
 
 **Option 1: Compatibility Layer**
+
 - Add version detection logic
 - Support multiple SDK versions simultaneously (not recommended for v0.1.0)
 
 **Option 2: Hub Version Bump**
+
 - Release new Hub version with updated SDK dependency
 - Clearly communicate breaking changes to users
 
 **Option 3: Defer Upgrade**
+
 - Continue using pinned SDK version until Hub roadmap aligns
 
 ### Unsupported ELANG Versions

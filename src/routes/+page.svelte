@@ -20,15 +20,16 @@
 			<div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
 				<Upload class="w-8 h-8 text-blue-600" />
 			</div>
-			<h2 class="text-3xl font-bold text-gray-900 mb-4">
-				Upload an ELANG Package
-			</h2>
+			<h2 class="text-3xl font-bold text-gray-900 mb-4">Upload an ELANG Package</h2>
 			<p class="text-gray-600 mb-8">
-				Upload a <code class="px-2 py-1 bg-gray-100 rounded text-sm">.elang</code> file to view its phonological inventory
+				Upload a <code class="px-2 py-1 bg-gray-100 rounded text-sm">.elang</code> file to view its phonological
+				inventory
 			</p>
-			
+
 			<div class="max-w-md mx-auto">
-				<div class="border-2 border-dashed border-gray-300 rounded-lg p-12 hover:border-gray-400 transition-colors">
+				<div
+					class="border-2 border-dashed border-gray-300 rounded-lg p-12 hover:border-gray-400 transition-colors"
+				>
 					<p class="text-gray-500">Upload functionality coming soon</p>
 				</div>
 			</div>

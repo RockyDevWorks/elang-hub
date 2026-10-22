@@ -31,15 +31,15 @@ The application will be available at `http://localhost:5173` (or the next availa
 
 ## Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server with hot module replacement |
-| `npm run build` | Build production-ready application for Cloudflare Pages |
-| `npm run preview` | Preview production build locally |
-| `npm run check` | Run TypeScript and Svelte type checking |
-| `npm run check:watch` | Run type checking in watch mode |
-| `npm run lint` | Run ESLint and Prettier checks |
-| `npm run format` | Auto-format code with Prettier |
+| Script                | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `npm run dev`         | Start development server with hot module replacement    |
+| `npm run build`       | Build production-ready application for Cloudflare Pages |
+| `npm run preview`     | Preview production build locally                        |
+| `npm run check`       | Run TypeScript and Svelte type checking                 |
+| `npm run check:watch` | Run type checking in watch mode                         |
+| `npm run lint`        | Run ESLint and Prettier checks                          |
+| `npm run format`      | Auto-format code with Prettier                          |
 
 ## Project Structure
 
@@ -108,6 +108,7 @@ All checks must pass before pushing to remote.
 ### CI/CD
 
 GitHub Actions runs on every push and pull request:
+
 - Type checking (`npm run check`)
 - Linting (`npm run lint`)
 - Build (`npm run build`)
@@ -147,10 +148,10 @@ Create `+server.ts` files for API endpoints:
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
-  // Handle validation request
-  return new Response(JSON.stringify({ status: 'ok' }), {
-    headers: { 'Content-Type': 'application/json' }
-  });
+	// Handle validation request
+	return new Response(JSON.stringify({ status: 'ok' }), {
+		headers: { 'Content-Type': 'application/json' }
+	});
 };
 ```
 
@@ -162,7 +163,7 @@ Use Tailwind utility classes directly in components:
 
 ```svelte
 <div class="flex items-center justify-center min-h-screen bg-gray-50">
-  <h1 class="text-3xl font-bold text-gray-900">Hello, ELANG!</h1>
+	<h1 class="text-3xl font-bold text-gray-900">Hello, ELANG!</h1>
 </div>
 ```
 
@@ -172,9 +173,9 @@ For component-specific styles, use `<style>` blocks:
 
 ```svelte
 <style>
-  .custom-class {
-    /* Custom CSS */
-  }
+	.custom-class {
+		/* Custom CSS */
+	}
 </style>
 ```
 
@@ -183,6 +184,7 @@ For component-specific styles, use `<style>` blocks:
 **Status:** Test infrastructure to be added in Phase H05 (Hardening & Release)
 
 Planned:
+
 - Unit tests (Vitest)
 - Integration tests
 - Browser tests (Playwright)
@@ -195,6 +197,7 @@ Planned:
 2. Deploy: Cloudflare Pages automatically deploys from GitHub on push to `main`
 
 Configuration:
+
 - Build command: `npm run build`
 - Build output directory: `.svelte-kit/output`
 - Adapter: `@sveltejs/adapter-cloudflare`

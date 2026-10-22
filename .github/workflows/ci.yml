@@ -6,13 +6,44 @@ on:
   pull_request:
     branches: [main]
 
+# Fail on warnings for reproducible builds
+env:
+  NODE_ENV: production
+
+# Cancel in-progress runs when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  lint:
+    name: Lint (Prettier + ESLint)
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prettier
+        run: npx prettier --check .
+
+      - name: Run ESLint
+        run: npx eslint .
+
+  typecheck:
+    name: Type Checking (svelte-check)
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,8 +60,21 @@ jobs:
       - name: Run type checking
         run: npm run check
 
-      - name: Run linter
-        run: npm run lint
+  build:
+    name: Build (Cloudflare)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build application
         run: npm run build
@@ -41,3 +85,20 @@ jobs:
           name: build-output
           path: .svelte-kit/output
           retention-days: 7
+
+  audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true

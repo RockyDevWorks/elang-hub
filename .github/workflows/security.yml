@@ -1,0 +1,116 @@
+name: Security
+
+# Security scanning for ELANG Hub: static analysis (CodeQL), vulnerability audit,
+# dependency review, and OpenSSF Scorecard. Runs on push, PRs, and daily schedule
+# to catch newly-published advisories.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Daily at 05:30 UTC: catch newly-published advisories
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+# Least-privilege by default
+permissions:
+  contents: read
+
+# Cancel in-progress runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  codeql:
+    name: CodeQL (JavaScript/TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
+
+  npm-audit:
+    name: npm audit (vulnerabilities)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    # PR-only: diffs the dependency manifest and blocks vulnerable or
+    # disallowed-license additions before they merge
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
+          # Allowed licenses (keep in sync with package.json)
+          allow-licenses: Apache-2.0, MIT, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
+
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-latest
+    # Supply-chain posture scoring
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run OpenSSF Scorecard
+        uses: ossf/scorecard-action@v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

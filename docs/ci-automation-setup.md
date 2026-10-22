@@ -39,27 +39,28 @@ Comprehensive security scanning running on push, PRs, and daily schedule.
 
 ---
 
-### 3. SonarCloud Workflow (`.github/workflows/sonarcloud.yml`)
+### 3. SonarCloud Analysis
 
-Code quality and security analysis with SonarCloud.
+Code quality and security analysis with SonarCloud Automatic Analysis.
 
-**Status:** ⚙️ Requires setup
+**Status:** ✅ Configured (Automatic Analysis enabled)
 
-**Setup Steps:**
+**How it works:**
 
-1. **Create SonarCloud account:**
+- SonarCloud automatically analyzes every push to the repository
+- No CI workflow needed - analysis runs on SonarCloud's infrastructure
+- Results appear in the SonarCloud dashboard and PR comments
+
+**Setup Steps (Already Completed):**
+
+1. **Import repository to SonarCloud:**
    - Go to https://sonarcloud.io
    - Sign in with GitHub
    - Import the `RockyDevWorks/elang-hub` repository
 
-2. **Add SONAR_TOKEN secret:**
-   - In SonarCloud: Account → Security → Generate Token
-   - In GitHub: Repository → Settings → Secrets and variables → Actions
-   - Add new secret: `SONAR_TOKEN` with the generated token
-
-3. **Verify configuration:**
-   - Check `sonar-project.properties` for correct project key
-   - Update organization name if needed
+2. **Enable Automatic Analysis:**
+   - Project Settings → Analysis Method → Automatic Analysis
+   - SonarCloud will analyze code automatically on every push
 
 **Features:**
 
@@ -67,6 +68,7 @@ Code quality and security analysis with SonarCloud.
 - Security vulnerability detection
 - Code smell identification
 - Technical debt tracking
+- PR decoration with quality gate status
 
 ---
 
@@ -162,6 +164,8 @@ Add these to README.md:
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=RockyDevWorks_elang-hub&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=RockyDevWorks_elang-hub)
 ```
 
+**Note:** SonarCloud badge reflects Automatic Analysis results (no workflow badge needed).
+
 ---
 
 ## Workflow Comparison with elang-rs
@@ -184,7 +188,7 @@ Add these to README.md:
 
 ### New Additions in elang-hub
 
-- ✅ SonarCloud integration (code quality analysis)
+- ✅ SonarCloud Automatic Analysis (code quality)
 - ✅ Mergify (automated PR management)
 - ✅ RenovateBot with intelligent grouping for npm ecosystem
 
@@ -230,12 +234,6 @@ Add these to README.md:
 2. Check PR has required approvals
 3. Review Mergify dashboard for rule evaluation
 4. Ensure PR is not draft or WIP
-
-### SonarCloud Analysis Failing
-
-1. Verify `SONAR_TOKEN` secret is set correctly
-2. Check `sonar-project.properties` configuration
-3. Review SonarCloud project settings
 
 ---
 

@@ -40,10 +40,11 @@ pull_request_rules:
   - name: Auto-approve Renovate PRs (non-major)
     conditions:
       - author=renovate[bot]
-      - -title~=\(major\)
-      - check-success=lint
-      - check-success=typecheck
-      - check-success=build
+      - -title~=(major)
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
     actions:
       review:
         type: APPROVE
@@ -53,10 +54,11 @@ pull_request_rules:
   - name: Auto-merge Renovate PRs (patch/minor)
     conditions:
       - author=renovate[bot]
-      - -title~=\(major\)
-      - check-success=lint
-      - check-success=typecheck
-      - check-success=build
+      - -title~=(major)
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
       - '#approved-reviews-by>=1'
     actions:
       merge:
@@ -67,9 +69,10 @@ pull_request_rules:
     conditions:
       - base=main
       - '#approved-reviews-by>=1'
-      - check-success=lint
-      - check-success=typecheck
-      - check-success=build
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
       - -draft
       - -title~=WIP
       - -title~=\[WIP\]
@@ -82,9 +85,10 @@ pull_request_rules:
   - name: Comment on CI failure
     conditions:
       - or:
-          - check-failure=lint
-          - check-failure=typecheck
-          - check-failure=build
+          - check-failure=Lint (Prettier + ESLint)
+          - check-failure=Type Checking (svelte-check)
+          - check-failure=Build (Cloudflare)
+          - check-failure=Dependency Audit
     actions:
       comment:
         message: |

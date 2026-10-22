@@ -199,7 +199,7 @@ Planned:
 Configuration:
 
 - Build command: `npm run build`
-- Build output directory: `.svelte-kit/output`
+- Build output directory: `.svelte-kit/cloudflare` (for Cloudflare Pages deployment)
 - Adapter: `@sveltejs/adapter-cloudflare`
 
 ### Fly.io (Validation Backend)

@@ -29,6 +29,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # NOSONAR: allowScripts in package.json explicitly allows only esbuild and workerd
         run: npm ci
 
       - name: Run linter
@@ -48,6 +49,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # NOSONAR: allowScripts in package.json explicitly allows only esbuild and workerd
         run: npm ci
 
       - name: Run type checking
@@ -67,6 +69,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        # NOSONAR: allowScripts in package.json explicitly allows only esbuild and workerd
         run: npm ci
 
       - name: Build application

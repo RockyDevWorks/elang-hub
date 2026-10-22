@@ -1,6 +1,6 @@
 name: Implementation task
 description: Track a scoped ELANG Hub implementation task
-title: "[HUB][v0.1.0] "
+title: '[HUB][v0.1.0] '
 body:
   - type: input
     id: task_id
@@ -26,13 +26,13 @@ body:
     id: acceptance
     attributes:
       label: Acceptance criteria
-      placeholder: "- [ ] ..."
+      placeholder: '- [ ] ...'
     validations:
       required: true
   - type: textarea
     id: tests
     attributes:
       label: Verification and tests
-      placeholder: "- [ ] ..."
+      placeholder: '- [ ] ...'
     validations:
       required: true

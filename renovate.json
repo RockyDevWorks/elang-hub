@@ -1,0 +1,58 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
+	"schedule": ["before 6am on monday"],
+	"timezone": "Etc/UTC",
+	"labels": ["dependencies"],
+	"prConcurrentLimit": 10,
+	"prHourlyLimit": 0,
+	"platformAutomerge": false,
+	"automerge": false,
+	"packageRules": [
+		{
+			"description": "Group patch and minor updates for devDependencies",
+			"matchDepTypes": ["devDependencies"],
+			"matchUpdateTypes": ["patch", "minor"],
+			"groupName": "dev dependencies (non-major)"
+		},
+		{
+			"description": "Group SvelteKit ecosystem updates",
+			"matchPackageNames": [
+				"@sveltejs/kit",
+				"@sveltejs/vite-plugin-svelte",
+				"@sveltejs/adapter-cloudflare",
+				"svelte"
+			],
+			"groupName": "SvelteKit ecosystem"
+		},
+		{
+			"description": "Group Tailwind CSS ecosystem",
+			"matchPackageNames": ["tailwindcss", "autoprefixer", "postcss"],
+			"groupName": "Tailwind CSS"
+		},
+		{
+			"description": "Group TypeScript and ESLint tooling",
+			"matchPackageNames": [
+				"typescript",
+				"typescript-eslint",
+				"eslint",
+				"eslint-plugin-svelte",
+				"eslint-config-prettier"
+			],
+			"groupName": "TypeScript/ESLint tooling"
+		},
+		{
+			"description": "Separate major updates for individual review",
+			"matchUpdateTypes": ["major"],
+			"automerge": false
+		}
+	],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on monday"]
+	},
+	"vulnerabilityAlerts": {
+		"labels": ["security"],
+		"stabilityDays": 0
+	}
+}

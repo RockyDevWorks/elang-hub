@@ -1,4 +1,4 @@
-import { uploadError, type UploadError } from './errors';
+import { uploadError, isUploadError, type UploadError } from './errors';
 import { checkSelection, formatFileSize } from './validate';
 
 /**
@@ -294,6 +294,13 @@ export async function readFile(
 		reader.releaseLock();
 	}
 
+	// A stream that ends early yields fewer bytes than the file
+	// declared. The package would be incomplete, so it is rejected
+	// rather than forwarded to the validation service as-is.
+	if (received !== file.size) {
+		throw uploadError('FILE_TRUNCATED');
+	}
+
 	const bytes = new Uint8Array(received);
 	let offset = 0;
 	for (const chunk of chunks) {
@@ -323,18 +330,6 @@ export function toUploadError(caught: unknown): UploadError {
 		}
 	}
 	return uploadError('VALIDATION_FAILED');
-}
-
-/** Whether `value` is already an `UploadError`. */
-function isUploadError(value: unknown): value is UploadError {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'code' in value &&
-		'message' in value &&
-		typeof (value as { code: unknown }).code === 'string' &&
-		typeof (value as { message: unknown }).message === 'string'
-	);
 }
 
 /**

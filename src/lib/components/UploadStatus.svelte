@@ -70,14 +70,14 @@
 			<p class="font-medium text-amber-900">This package was not accepted.</p>
 			{#if state.result.messages.length > 0}
 				<ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-800">
-					{#each state.result.messages as message (message)}
+					{#each state.result.messages as message, i (i)}
 						<li>{message}</li>
 					{/each}
 				</ul>
 			{/if}
 			{#if state.result.diagnostics.length > 0}
 				<ul class="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-700">
-					{#each state.result.diagnostics as diagnostic (diagnostic)}
+					{#each state.result.diagnostics as diagnostic, i (i)}
 						<li><code>{diagnostic}</code></li>
 					{/each}
 				</ul>

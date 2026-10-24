@@ -1,4 +1,4 @@
-import { uploadError, type UploadError } from './errors';
+import { uploadError } from './errors';
 import type { ValidationResult } from './controller';
 
 /**
@@ -80,9 +80,4 @@ function normaliseResult(payload: unknown): ValidationResult {
 		? candidate.messages.filter((m): m is string => typeof m === 'string')
 		: [];
 	return { ok, diagnostics, messages };
-}
-
-/** Whether `error` is an `UploadError`. */
-export function isUploadError(error: unknown): error is UploadError {
-	return typeof error === 'object' && error !== null && 'code' in error && 'message' in error;
 }

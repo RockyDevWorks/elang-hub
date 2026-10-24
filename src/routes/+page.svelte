@@ -17,7 +17,7 @@
 
 	const busy = $derived(uploadState.phase === 'reading' || uploadState.phase === 'validating');
 
-	function handleFiles(files: FileList | null): void {
+	function handleFiles(files: File[] | null): void {
 		void controller.select(files, requestValidation);
 	}
 </script>

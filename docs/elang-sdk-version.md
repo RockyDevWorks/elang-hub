@@ -2,7 +2,7 @@
 
 ## Current Version
 
-**Status:** To be determined during backend implementation (Phase H01)
+**Status:** To be determined during backend implementation (Phase H02)
 
 The validation backend will pin to a specific `elang-rs` release tag once the SDK reaches a stable milestone.
 

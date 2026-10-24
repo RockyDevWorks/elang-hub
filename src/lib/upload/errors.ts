@@ -25,15 +25,28 @@ export interface UploadError {
 	readonly message: string;
 }
 
-/**
- * Build an `UploadError` from a code.
- *
- * The messages are deliberately plain. "The file could not be read"
- * beats surfacing `AbortError: The user aborted a request.` from the
- * platform.
- */
+/** Build an `UploadError` from a code. */
 export function uploadError(code: UploadErrorCode): UploadError {
 	return { code, message: UPLOAD_ERROR_MESSAGES[code] };
+}
+
+/**
+ * Whether `value` is an `UploadError`.
+ *
+ * The check validates that `code` is one of the typed codes and that
+ * `message` is a string, so a thrown object with stray fields cannot
+ * pass as an upload failure.
+ */
+export function isUploadError(value: unknown): value is UploadError {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+	const candidate = value as { code?: unknown; message?: unknown };
+	return (
+		typeof candidate.code === 'string' &&
+		candidate.code in UPLOAD_ERROR_MESSAGES &&
+		typeof candidate.message === 'string'
+	);
 }
 
 const UPLOAD_ERROR_MESSAGES: Record<UploadErrorCode, string> = {

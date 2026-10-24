@@ -13,6 +13,15 @@ import { env } from '$env/dynamic/private';
 const VALIDATION_SERVICE_URL = env.VALIDATION_SERVICE_URL;
 
 /**
+ * Maximum time to wait for the upstream validation service.
+ *
+ * Stalled requests fail loudly rather than hanging the browser, and
+ * any in-flight `AbortSignal` from the client cancels the upstream
+ * fetch as well.
+ */
+const UPSTREAM_TIMEOUT_MS = 10_000;
+
+/**
  * Validate an uploaded ELANG package.
  *
  * The request body is the package bytes, sent as an opaque binary
@@ -32,42 +41,86 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		);
 	}
 
-	// Reject an oversized upload on the declared length, before
-	// reading a single byte of the body.
-	const declaredLength = Number(request.headers.get('content-length') ?? '0');
-	if (Number.isFinite(declaredLength) && declaredLength > MAX_FILE_BYTES) {
-		return json(
-			{ ok: false, diagnostics: [], messages: ['That package is too large to process.'] },
-			{ status: 413 }
-		);
-	}
+	const tooLarge = {
+		ok: false,
+		diagnostics: [],
+		messages: ['That package is too large to process.'],
+		status: 413
+	} as const;
 
-	const body = await request.arrayBuffer();
-	if (body.byteLength === 0) {
+	// Read the body incrementally with a hard byte cap, so an
+	// attacker cannot exhaust memory by streaming an unbounded body
+	// without a Content-Length header.
+	let received = 0;
+	const chunks: Uint8Array[] = [];
+	const reader = request.body?.getReader();
+	if (!reader) {
 		return json(
 			{ ok: false, diagnostics: [], messages: ['That package is empty.'] },
 			{ status: 400 }
 		);
 	}
-	if (body.byteLength > MAX_FILE_BYTES) {
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) {
+				break;
+			}
+			if (value) {
+				if (received + value.byteLength > MAX_FILE_BYTES) {
+					await reader.cancel();
+					return json(
+						{ ok: false, diagnostics: [], messages: tooLarge.messages },
+						{ status: tooLarge.status }
+					);
+				}
+				chunks.push(value);
+				received += value.byteLength;
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+
+	if (received === 0) {
 		return json(
-			{ ok: false, diagnostics: [], messages: ['That package is too large to process.'] },
-			{ status: 413 }
+			{ ok: false, diagnostics: [], messages: ['That package is empty.'] },
+			{ status: 400 }
 		);
 	}
+
+	const body = new Uint8Array(received);
+	let offset = 0;
+	for (const chunk of chunks) {
+		body.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+
+	// Combine the request's abort signal with an upstream timeout so
+	// browser cancellation propagates and stalled requests cannot
+	// hang indefinitely.
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+	if (request.signal.aborted) {
+		controller.abort();
+	}
+	request.signal.addEventListener('abort', () => controller.abort(), { once: true });
 
 	let response: Response;
 	try {
 		response = await fetch(VALIDATION_SERVICE_URL, {
 			method: 'POST',
 			headers: { 'content-type': 'application/octet-stream' },
-			body
+			body,
+			signal: controller.signal
 		});
 	} catch {
 		return json(
 			{ ok: false, diagnostics: [], messages: ['Validation is unavailable right now.'] },
 			{ status: 503 }
 		);
+	} finally {
+		clearTimeout(timeout);
 	}
 
 	if (!response.ok) {
@@ -77,6 +130,42 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		);
 	}
 
-	const payload = await response.json();
-	return json(payload);
+	let payload: unknown;
+	try {
+		payload = await response.json();
+	} catch {
+		return json(
+			{ ok: false, diagnostics: [], messages: ['Validation is unavailable right now.'] },
+			{ status: 502 }
+		);
+	}
+
+	return json(normaliseValidationResponse(payload));
 };
+
+/**
+ * Coerce an upstream response into the narrow `ValidationResult`
+ * shape the UI consumes.
+ *
+ * Only `ok`, `diagnostics`, and `messages` are exposed, and each is
+ * validated for type. Anything else the upstream service includes is
+ * dropped so it cannot reach the browser.
+ */
+function normaliseValidationResponse(payload: unknown): {
+	ok: boolean;
+	diagnostics: string[];
+	messages: string[];
+} {
+	if (typeof payload !== 'object' || payload === null) {
+		return { ok: false, diagnostics: [], messages: [] };
+	}
+	const candidate = payload as { ok?: unknown; diagnostics?: unknown; messages?: unknown };
+	const ok = candidate.ok === true;
+	const diagnostics = Array.isArray(candidate.diagnostics)
+		? candidate.diagnostics.filter((d): d is string => typeof d === 'string')
+		: [];
+	const messages = Array.isArray(candidate.messages)
+		? candidate.messages.filter((m): m is string => typeof m === 'string')
+		: [];
+	return { ok, diagnostics, messages };
+}

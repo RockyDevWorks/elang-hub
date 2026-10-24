@@ -200,6 +200,31 @@ describe('UploadController (H0104, H0105, H0106, H0108)', () => {
 		expect(controller.state.error?.message).not.toContain('/var/secrets');
 	});
 
+	it('rejects a truncated stream as FILE_TRUNCATED', async () => {
+		const controller = new UploadController();
+		// A `File` whose declared size is 8 bytes but the stream only
+		// yields 4 — an early `done`. The package is incomplete and
+		// must not be forwarded to the validator.
+		const truncated: File = {
+			name: 'incomplete.elang',
+			size: 8,
+			type: 'application/vnd.elang',
+			arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(new Uint8Array(4));
+						controller.close();
+					}
+				})
+		} as unknown as File;
+		const validate = vi.fn();
+		await controller.select([truncated], validate);
+		expect(validate).not.toHaveBeenCalled();
+		expect(controller.state.phase).toBe('error');
+		expect(controller.state.error?.code).toBe('FILE_TRUNCATED');
+	});
+
 	it('stops notifying subscribers after unsubscribe', async () => {
 		const controller = new UploadController();
 		const listener = vi.fn();

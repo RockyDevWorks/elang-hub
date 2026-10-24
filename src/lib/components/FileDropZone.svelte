@@ -7,7 +7,7 @@
 		/** Whether the control should accept input. */
 		disabled?: boolean;
 		/** Called with the chosen files. */
-		onfiles: (files: FileList | null) => void;
+		onfiles: (files: File[] | null) => void;
 		/** Called when a drag enters or leaves the drop target. */
 		ondragchange?: (dragging: boolean) => void;
 	}
@@ -17,11 +17,16 @@
 	let input = $state<HTMLInputElement | null>(null);
 	let dragDepth = $state(0);
 
+	function toArray(files: FileList | null): File[] | null {
+		return files ? Array.from(files) : null;
+	}
+
 	function handleChange(event: Event): void {
 		const target = event.currentTarget as HTMLInputElement;
-		onfiles(target.files);
-		// Reset the input so re-selecting the same file fires `change`
-		// again.
+		// Copy the FileList into an array before resetting the input:
+		// the FileList is live, and `target.value = ''` clears it, so
+		// the consumer must see the chosen files first.
+		onfiles(toArray(target.files));
 		target.value = '';
 	}
 
@@ -57,7 +62,7 @@
 		if (disabled) {
 			return;
 		}
-		onfiles(event.dataTransfer?.files ?? null);
+		onfiles(toArray(event.dataTransfer?.files ?? null));
 	}
 </script>
 

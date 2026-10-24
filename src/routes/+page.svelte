@@ -1,5 +1,25 @@
 <script lang="ts">
 	import { Upload } from '@lucide/svelte';
+	import FileDropZone from '$lib/components/FileDropZone.svelte';
+	import UploadStatus from '$lib/components/UploadStatus.svelte';
+	import { UploadController, type UploadState } from '$lib/upload/controller';
+	import { requestValidation } from '$lib/upload/client';
+
+	const controller = new UploadController();
+	let uploadState = $state<UploadState>(controller.state);
+	let dragging = $state(false);
+
+	$effect(() => {
+		return controller.subscribe((next: UploadState) => {
+			uploadState = next;
+		});
+	});
+
+	const busy = $derived(uploadState.phase === 'reading' || uploadState.phase === 'validating');
+
+	function handleFiles(files: FileList | null): void {
+		void controller.select(files, requestValidation);
+	}
 </script>
 
 <svelte:head>
@@ -27,11 +47,18 @@
 			</p>
 
 			<div class="max-w-md mx-auto">
-				<div
-					class="border-2 border-dashed border-gray-300 rounded-lg p-12 hover:border-gray-400 transition-colors"
-				>
-					<p class="text-gray-500">Upload functionality coming soon</p>
-				</div>
+				<FileDropZone
+					{dragging}
+					disabled={busy}
+					onfiles={handleFiles}
+					ondragchange={(next) => (dragging = next)}
+				/>
+
+				<UploadStatus
+					state={uploadState}
+					oncancel={() => controller.cancel()}
+					onreset={() => controller.reset()}
+				/>
 			</div>
 		</div>
 	</main>

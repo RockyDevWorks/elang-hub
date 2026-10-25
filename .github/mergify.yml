@@ -1,0 +1,118 @@
+pull_request_rules:
+  # Auto-label PRs based on files changed
+  - name: Label frontend changes
+    conditions:
+      - files~=^src/
+    actions:
+      label:
+        add:
+          - frontend
+
+  - name: Label documentation changes
+    conditions:
+      - or:
+          - files~=^docs/
+          - files~=\.md$
+    actions:
+      label:
+        add:
+          - documentation
+
+  - name: Label CI/CD changes
+    conditions:
+      - files~=^\.github/
+    actions:
+      label:
+        add:
+          - ci/cd
+
+  - name: Label dependency updates
+    conditions:
+      - or:
+          - files~=^package\.json$
+          - files~=^package-lock\.json$
+    actions:
+      label:
+        add:
+          - dependencies
+
+  # Auto-approve Renovate PRs (non-major)
+  - name: Auto-approve Renovate PRs (non-major)
+    conditions:
+      - author=renovate[bot]
+      - -title~=(major)
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Test (Vitest)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
+    actions:
+      review:
+        type: APPROVE
+        message: 'Automated approval for Renovate non-major update'
+
+  # Auto-merge Renovate PRs (patch/minor)
+  - name: Auto-merge Renovate PRs (patch/minor)
+    conditions:
+      - author=renovate[bot]
+      - -title~=(major)
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Test (Vitest)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
+      - '#approved-reviews-by>=1'
+    actions:
+      merge:
+        method: squash
+
+  # Auto-merge approved PRs from team members
+  - name: Automatic merge on approval
+    conditions:
+      - base=main
+      - '#approved-reviews-by>=1'
+      - check-success=Lint (Prettier + ESLint)
+      - check-success=Type Checking (svelte-check)
+      - check-success=Test (Vitest)
+      - check-success=Build (Cloudflare)
+      - check-success=Dependency Audit
+      - -draft
+      - -title~=WIP
+      - -title~=\[WIP\]
+      - -author=renovate[bot]
+    actions:
+      merge:
+        method: squash
+
+  # Request changes for failing CI
+  - name: Comment on CI failure
+    conditions:
+      - or:
+          - check-failure=Lint (Prettier + ESLint)
+          - check-failure=Type Checking (svelte-check)
+          - check-failure=Test (Vitest)
+          - check-failure=Build (Cloudflare)
+          - check-failure=Dependency Audit
+    actions:
+      comment:
+        message: |
+          ⚠️ CI checks are failing. Please fix the issues before merging.
+
+          Check the Actions tab for details.
+
+  # Delete head branch after merge
+  - name: Delete head branch after merge
+    conditions:
+      - merged
+    actions:
+      delete_head_branch: {}
+
+  # Automatic rebase on conflict
+  - name: Automatic rebase on conflict
+    conditions:
+      - -conflict
+      - -draft
+    actions:
+      comment:
+        message: |
+          This PR is ready to merge and has no conflicts!

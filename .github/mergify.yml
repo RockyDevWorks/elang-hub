@@ -101,11 +101,6 @@ pull_request_rules:
           Check the Actions tab for details.
 
   # Delete head branch after merge
-  - name: Delete head branch after merge
-    conditions:
-      - merged
-    actions:
-      delete_head_branch: {}
 
   # Automatic rebase on conflict
   - name: Automatic rebase on conflict

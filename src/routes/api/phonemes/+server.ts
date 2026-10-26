@@ -26,7 +26,7 @@
  */
 
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
+import { SDK_SERVICE_URL } from '$app/env/private';
 import { SdkClient, MAX_SDK_BODY_BYTES, type SdkResult } from '$lib/sdk';
 
 const SLASH_CHAR_CODE = 47;
@@ -34,14 +34,16 @@ const SLASH_CHAR_CODE = 47;
 /**
  * Resolve the SDK service URL from the runtime environment.
  *
- * `$env/dynamic/private` is SvelteKit's adapter-neutral runtime env
+ * `$app/env/private` is SvelteKit's adapter-neutral runtime env
  * access — it reads from `process.env` under Node and from the
- * Cloudflare platform bindings in production. The deployment must
- * set `SDK_SERVICE_URL`; an unconfigured deployment fails loudly
- * (503) rather than silently fall back to a default.
+ * Cloudflare platform bindings in production. The variable is
+ * declared in `src/env.ts`; SvelteKit generates the accessor
+ * module from that declaration. The deployment must set
+ * `SDK_SERVICE_URL`; an unconfigured deployment fails loudly (503)
+ * rather than silently fall back to a default.
  */
 function resolveServiceUrl(): string {
-	const url = env.SDK_SERVICE_URL;
+	const url = SDK_SERVICE_URL;
 	if (!url) {
 		throw error(503, {
 			message: 'The validation service URL is not configured on this deployment.'

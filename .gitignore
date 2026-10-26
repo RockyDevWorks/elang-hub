@@ -10,6 +10,9 @@ dist
 /.vercel
 .cloudflare
 
+# Cloudflare Workers local state (wrangler dev / adapter output)
+.wrangler
+
 # Environment
 .env
 .env.local

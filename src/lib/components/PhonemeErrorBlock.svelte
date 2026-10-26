@@ -55,14 +55,20 @@
 	.muted {
 		margin: 0;
 		font-size: 0.75rem;
-		color: rgb(107 114 128);
+		/* rgb(107 114 128) only reaches 4.42:1 against the error
+		 * fill — under the 4.5:1 AA minimum for normal text. */
+		color: rgb(75 85 99);
 	}
 	.replace-button {
 		align-self: flex-start;
 		padding: 0.625rem 1.25rem;
 		background: white;
 		color: rgb(17 24 39);
-		border: 1px solid rgb(209 213 219);
+		/* The button sits on the error fill, and white-on-error-fill
+		 * is a 1.03:1 difference — so this border is the only cue
+		 * that the surface is a control. WCAG 1.4.11 needs 3:1;
+		 * this is 4.42:1 on the error fill. */
+		border: 1px solid rgb(107 114 128);
 		border-radius: 0.5rem;
 		font-weight: 500;
 		cursor: pointer;

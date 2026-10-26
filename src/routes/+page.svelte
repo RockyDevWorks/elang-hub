@@ -128,7 +128,10 @@
 		padding: 0.625rem 1.25rem;
 		background: white;
 		color: rgb(17 24 39);
-		border: 1px solid rgb(209 213 219);
+		/* The border is the only cue that this surface is a
+		 * control, so it meets WCAG 1.4.11's 3:1 minimum
+		 * (4.83:1 on white). */
+		border: 1px solid rgb(107 114 128);
 		border-radius: 0.5rem;
 		font-weight: 500;
 		cursor: pointer;

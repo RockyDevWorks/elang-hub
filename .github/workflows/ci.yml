@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
 
   test:
-    name: Test (Vitest)
+    name: Test (Vitest) + Codecov
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -124,5 +124,20 @@ jobs:
       - name: Sync SvelteKit type configuration
         run: npx svelte-kit sync
 
-      - name: Run unit tests
-        run: npm test
+      # `npm run coverage` produces `coverage/lcov.info` consumed by
+      # the Codecov uploader below.
+      - name: Run unit tests with coverage
+        run: npm run coverage
+
+      - name: Upload coverage to Codecov
+        # codecov-action is pinned to an immutable commit SHA per the
+        # repo's supply-chain policy (mutable tag refs can be force-
+        # pushed by upstream). v5.5.5 = 0fb7174895f61a3b6b78fc075e0cd60383518dac
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        with:
+          # The public Codecov uploader; no token required for
+          # public repos. The Hub repo is public, so the default
+          # anonymous upload is sufficient.
+          files: ./coverage/lcov.info
+          flags: unit
+          fail_ci_if_error: false

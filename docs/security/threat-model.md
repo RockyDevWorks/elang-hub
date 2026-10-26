@@ -92,13 +92,11 @@ must bound the input bytes itself.
   short-circuited before the body stream is opened.
 - **Wall-clock timeout (30 s).** `composeAbortSignal` fires
   regardless of caller cancellation, bounding the Hub's wait for
-  the SDK response. It does not guarantee SDK processing completes
-  within that time.
-- **SDK decompression limits.** A Hub-bound 16 MiB selection can
-  still reach the SDK's 1 GiB per-resource and 8 GiB aggregate
-  decompression ceilings, with a 128 MiB window ceiling. The
-  observed ~32,700:1 expansion ratio is not an enforced limit and
-  cannot establish a decompressed-size or runtime bound.
+  the SDK service. This does not guarantee that SDK decompression
+  completes within 30 s. A selection within the 16 MiB upload cap
+  remains subject to the SDK's absolute limits: a 128 MiB window,
+  1 GiB per resource and 8 GiB aggregate. The observed ~32,700:1
+  expansion ratio is not a ceiling and does not justify the timeout.
 - **No archive-level ceiling on the read path.** The SDK has no
   total-archive-byte cap (`MAX_COMPRESSED_ARCHIVE_BYTES` is
   writer-side only — `docs/security-limits.md:47`, open task

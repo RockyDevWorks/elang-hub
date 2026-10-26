@@ -238,9 +238,11 @@ Kit 3 Vite plugin (`vite.config.ts`) as defence in depth.
   dropped when the page transitions to `idle` (via `replace` or
   `cancel`).
 - **No telemetry.** The Hub has no analytics, no beacons, no
-  remote logging. The endpoint never logs the body. The audit
-  (`rg 'console\.(log|info|warn|error|debug)' src/`) found zero
-  occurrences.
+  remote logging. The endpoint never logs the body. This is
+  enforced on every CI run by `src/routes/privacy-audit.test.ts`,
+  which re-reads the shipped source and fails the build if any
+  console log, client-side storage call, beacon, filesystem write
+  or hardcoded third-party `fetch` URL appears.
 - **Reset / cancel / failure cleanup.** Every controller transition
   to `idle` increments the generation counter and aborts any
   in-flight `AbortSignal`, so a slow run cannot overwrite a

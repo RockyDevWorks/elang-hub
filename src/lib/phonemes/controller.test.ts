@@ -17,7 +17,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { PhonemePageController } from './controller';
-import type { PhonemePageError, PhonemePageView } from './controller';
+import type { PhonemePageError, PhonemePageState, PhonemePageView } from './controller';
 import type { PhonemeRequestOutcome, RequestPhonemeView } from './index';
 import { httpErrorOutcome, sdkErrorOutcome, transportErrorOutcome, viewOutcome } from './index';
 import type { PhonemeViewResult } from '../view';
@@ -592,6 +592,35 @@ describe('PhonemePageController', () => {
 		expect(receivedBytes).not.toBeNull();
 		expect((receivedBytes as unknown as ArrayBuffer).byteLength).toBe(0);
 		expect(controller.state.phase).toBe('view');
+	});
+
+	// H0503 — privacy / cleanup / error recovery. The controller's
+	// emitted state is the page's only window onto the run, so the
+	// page-level guarantee that no package bytes survive a run is
+	// only as good as the state object. Every emitted phase is
+	// checked, not just the terminal one.
+	it('never carries the package bytes in any emitted state', async () => {
+		const controller = new PhonemePageController();
+		const emitted: PhonemePageState[] = [];
+		controller.subscribe((state) => emitted.push(state));
+
+		const file = makeFile('no-persist.elang', new Uint8Array([1, 2, 3, 4, 5]));
+		const request: RequestPhonemeView = async () => httpErrorOutcome(413, 'request.body');
+
+		await controller.select(file as unknown as File, request);
+
+		// The run started in `validating` and ended in `error`.
+		expect(emitted.length).toBeGreaterThanOrEqual(2);
+		expect(emitted[0]?.phase).toBe('validating');
+		expect(emitted[emitted.length - 1]?.phase).toBe('error');
+
+		for (const state of emitted) {
+			const record = state as unknown as Record<string, unknown>;
+			expect(record.bytes).toBeUndefined();
+			expect(record.buffer).toBeUndefined();
+			expect(record.arrayBuffer).toBeUndefined();
+			expect(record.data).toBeUndefined();
+		}
 	});
 });
 

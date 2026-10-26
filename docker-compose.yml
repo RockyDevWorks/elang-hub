@@ -1,0 +1,60 @@
+# ELANG Hub — local / single-host container deployment.
+#
+#   cp .env.example .env  &&  edit SDK_SERVICE_URL
+#   docker compose up --build
+#
+# The Hub is stateless — no database, no volume, no persistence layer
+# is declared. Two complementary hardening choices are made here:
+#
+#   * `read_only: true` + `tmpfs: /tmp` — the runtime stage performs
+#     no filesystem writes (SvelteKit adapter-node is read-only at
+#     runtime; `/api/phonemes` and `/api/validate` proxy bytes
+#     through the validation service), so the container can run with
+#     a read-only root filesystem. If a future code path needs a
+#     writable path, add it to the `tmpfs` list below — never loosen
+#     `read_only` first.
+#   * `cap_drop: [ALL]` + `security_opt: no-new-privileges:true` —
+#     Node needs no Linux capabilities; both are standard
+#     hardening for stateless workloads.
+#
+# Override any of these locally with a `docker-compose.override.yml`
+# that mirrors the service name.
+
+services:
+  hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Browser-facing origin for SvelteKit paths.origin. Rebuild to change it.
+        HUB_ORIGIN: ${HUB_ORIGIN:-http://localhost:3000}
+    image: elang-hub:local
+    container_name: elang-hub
+    ports:
+      # `${HUB_PORT:-3000}` reads from `.env` with a loopback default;
+      # change HUB_PORT in `.env` to republish on a different host port.
+      - '${HUB_PORT:-3000}:3000'
+    environment:
+      # Base URL of the ELANG SDK validation service. Required: the
+      # `/api/phonemes` and `/api/validate` endpoints return 503 with
+      # a clear error body when the URL is unconfigured, rather than
+      # failing to boot — see src/routes/api/validate/+server.ts.
+      SDK_SERVICE_URL: ${SDK_SERVICE_URL:?Set SDK_SERVICE_URL in .env to your validation service URL}
+      PORT: '3000'
+      HOST: '0.0.0.0'
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - 'CMD-SHELL'
+        - 'node -e "fetch(''http://127.0.0.1:3000/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3

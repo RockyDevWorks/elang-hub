@@ -1,0 +1,31 @@
+# Build output, dependencies and VCS state are produced or fetched
+# inside the image — never copied from the host build context.
+node_modules
+.svelte-kit
+build
+coverage
+
+.git
+.gitignore
+.github
+
+# Local environment files may contain secrets. `.env.example` is the
+# only env file intentionally shipped with the repo, and `.env*`
+# below still excludes it because nothing in the image needs it —
+# `docker compose` reads `.env` from the project dir at deploy time.
+.env
+.env.*
+
+# Editor / OS noise.
+.vscode
+.idea
+.DS_Store
+
+# Documentation and scratch — not needed to build the app.
+docs
+README.md
+
+# Test fixtures and large test data (none currently, but easy to
+# forget once any are added).
+**/*.test.ts.snap
+test-fixtures

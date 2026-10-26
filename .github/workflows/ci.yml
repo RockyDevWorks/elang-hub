@@ -87,6 +87,90 @@ jobs:
           path: .svelte-kit/cloudflare
           retention-days: 7
 
+  docker:
+    name: Build (Docker)
+    runs-on: ubuntu-latest
+    # Job-level, not step-level: `docker-compose.yml` declares
+    # SDK_SERVICE_URL as required (`${SDK_SERVICE_URL:?...}`), so ANY
+    # step that touches the compose file — including the teardown —
+    # fails to even parse it when the variable is missing. A step-scoped
+    # `env:` block breaks the teardown.
+    env:
+      # Points at a non-resolvable host on purpose: the Hub must fail
+      # CLOSED with 503 when the validation service is unreachable, and
+      # the container must stay up and healthy.
+      SDK_SERVICE_URL: https://validation-service.invalid
+      HUB_PORT: '3000'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # This job is the verification the Dockerfile cannot get
+      # anywhere else: the image is built, started, and exercised
+      # against the same commands `docker compose up --build` runs
+      # for an operator. It is the only place the container is
+      # actually built — a broken Dockerfile fails here rather than
+      # in a user's terminal.
+      - name: Build and start the Compose stack
+        run: docker compose up --detach --build
+
+      - name: Smoke test the container
+        run: |
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --output /dev/null http://127.0.0.1:3000/; then
+              echo "Hub served GET / after ${attempt} attempt(s)"
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::Hub container never became ready"
+            docker compose logs
+            exit 1
+          fi
+
+          # The image's own HEALTHCHECK must report healthy. Its
+          # interval is 30s, so POLL for the status instead of
+          # sampling it once — the server answers well before Docker's
+          # first probe fires, and a single sample would read
+          # "starting" and fail the job on a healthy container.
+          health=starting
+          for attempt in $(seq 1 45); do
+            health=$(docker inspect --format '{{.State.Health.Status}}' elang-hub)
+            if [ "$health" = "healthy" ]; then
+              echo "container reported healthy after ${attempt} probe(s)"
+              break
+            fi
+            if [ "$health" = "unhealthy" ]; then
+              echo "::error::container reported unhealthy"
+              docker compose logs
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "container health: ${health}"
+          test "$health" = "healthy"
+
+          # Fail closed, not crash: an unconfigured validation service
+          # must produce 503, not a 500 or a dead container.
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --request POST http://127.0.0.1:3000/api/validate \
+            --header 'content-type: application/octet-stream' \
+            --data-binary 'x')
+          echo "POST /api/validate -> ${status}"
+          test "$status" = "503"
+
+          # The container must not be running as root.
+          user=$(docker inspect --format '{{.Config.User}}' elang-hub)
+          echo "container user: ${user}"
+          test "$user" = "node"
+
+      - name: Tear down the stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
   audit:
     name: Dependency Audit
     runs-on: ubuntu-latest

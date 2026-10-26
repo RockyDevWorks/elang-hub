@@ -30,6 +30,40 @@ Key constraints:
 
 **Compatibility note:** The emitted static assets remain compatible with Cloudflare Pages.
 
+### Deployment targets
+
+The Hub builds to two targets from one source tree. SvelteKit builds
+exactly one adapter per invocation, so the adapter is chosen at build
+time in `vite.config.ts`; every other setting (CSP, preprocess, the
+`$lib` alias, the Tailwind pipeline) is shared between them.
+
+| Target                       | Adapter                          | Build command        | Runtime              |
+| ---------------------------- | -------------------------------- | -------------------- | -------------------- |
+| Cloudflare Workers (v0.1.0)  | `@sveltejs/adapter-cloudflare` 8 | `npm run build`      | workerd (V8 isolate) |
+| Container / self-hosted Node | `@sveltejs/adapter-node` 6       | `npm run build:node` | Node.js ≥ 22.17      |
+
+The Cloudflare Workers path is the v0.1.0 production deployment and
+is unchanged. The container target is additive: it packages the same
+application as a standalone Node HTTP server behind a `Dockerfile` and
+a `docker-compose.yml`, so the Hub can run on a host that is not
+Cloudflare — a Kubernetes cluster, a private network, or a laptop.
+
+**Rationale:**
+
+- One source tree, two artifacts. A second application or a forked
+  build script would double the maintenance surface for the CSP, the
+  upload limits, and the validation proxy. Sharing the adapter
+  selection keeps a single source of truth for all of it.
+- The Node adapter is a build-time dependency, not a runtime one.
+  SvelteKit bundles its server code into the output, so the
+  container image installs only the production dependency tree and
+  runs as an unprivileged user.
+- Secrets stay out of the image. `SDK_SERVICE_URL` and `ORIGIN` are
+  runtime environment variables in both targets — Worker variables on
+  Cloudflare, environment variables in the container.
+- CI builds and smoke-tests the image on every PR, so the container
+  path cannot rot unnoticed while the Workers path stays green.
+
 **Rationale:**
 
 - SvelteKit provides excellent DX, flexible rendering (SSR/SSG/CSR), and strong TypeScript support
@@ -47,6 +81,7 @@ and ship in v0.1.0.
 | ----------------------------------- | ------------ | ----------------- |
 | `@sveltejs/kit`                     | 3            | `^3.1.0`          |
 | `@sveltejs/adapter-cloudflare`      | 8            | `^8.0.1`          |
+| `@sveltejs/adapter-node`            | 6            | `^6.0.0`          |
 | `@sveltejs/vite-plugin-svelte`      | 7            | `^7.3.1`          |
 | `svelte`                            | 5            | `^5.57.1`         |
 | `vite`                              | 8            | `^8.0.12`         |
@@ -165,3 +200,11 @@ Cloudflare Workers renders phoneme viewer
   actually emits and what `docs/operator-guide.md` documents. The
   `undici` advisory is now cleared by pinning `wrangler ^4.153.0` as a
   direct devDependency, so the `overrides` block is empty.
+- **2026-10-26 (post-v0.1.0).** Added a second deployment target:
+  a containerised Node HTTP server behind a `Dockerfile` and
+  `docker-compose.yml`, built with `@sveltejs/adapter-node` 6. The
+  v0.1.0 production target (Cloudflare Workers) is unchanged; the two
+  targets share every other SvelteKit/Vite setting and the adapter is
+  selected at build time in `vite.config.ts`. CI builds and smoke-tests
+  the image on every PR to keep the container contract honest. Added
+  `@sveltejs/adapter-node ^6.0.0` to the pinned-major table.

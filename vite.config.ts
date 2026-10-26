@@ -1,4 +1,5 @@
-import adapter from '@sveltejs/adapter-cloudflare';
+import adapterCloudflare from '@sveltejs/adapter-cloudflare';
+import adapterNode from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
@@ -31,12 +32,41 @@ export default defineConfig({
 			 * two lines can be reconciled without a 45-file rename.
 			 */
 			alias: { $lib: 'src/lib' },
-			adapter: adapter({
-				routes: {
-					include: ['/*'],
-					exclude: ['<all>']
-				}
-			}),
+			// Node containers bake in their browser-facing origin for URL construction
+			// and CSRF checks. Cloudflare continues to derive it from the request.
+			paths: {
+				origin: process.env.BUILD_TARGET === 'node' ? process.env.HUB_ORIGIN : undefined
+			},
+			/**
+			 * Deployment target.
+			 *
+			 * SvelteKit 3 builds exactly one adapter per invocation,
+			 * so this single source tree ships to two runtimes from
+			 * two scripts:
+			 *
+			 *   - `cloudflare` (default) — the v0.1.0 production target:
+			 *     the Worker bundle that Cloudflare serves. Unchanged
+			 *     by the Docker work; produced by `npm run build`.
+			 *   - `node` — the container target: a standalone Node
+			 *     HTTP server built with `@sveltejs/adapter-node` and
+			 *     run by the Dockerfile. Selected by either
+			 *     `BUILD_TARGET=node` (env, what CI uses) or
+			 *     `npm run build:node` (which sets the env via the
+			 *     npm-script prefix).
+			 *
+			 * The two adapters share all upstream SvelteKit/Vite
+			 * configuration — CSP, preprocess, alias, Tailwind — so a
+			 * change here is a single diff with one source of truth.
+			 */
+			adapter:
+				process.env.BUILD_TARGET === 'node'
+					? adapterNode({ out: 'build' })
+					: adapterCloudflare({
+							routes: {
+								include: ['/*'],
+								exclude: ['<all>']
+							}
+						}),
 			/**
 			 * H0502 — Content Security Policy.
 			 *

@@ -346,7 +346,13 @@ function parseVerify(json: Record<string, unknown>): SdkVerifyResult | SdkFailur
 function parseValidate(json: Record<string, unknown>): SdkValidateResult | SdkFailure {
 	const specVersion = json.specVersion;
 	const containerVersion = json.binaryContainerVersion;
-	if (typeof specVersion !== 'string' || typeof containerVersion !== 'string') {
+	const phonemeResourcePath = json.phonemeResourcePath;
+	if (
+		typeof specVersion !== 'string' ||
+		typeof containerVersion !== 'string' ||
+		typeof phonemeResourcePath !== 'string' ||
+		phonemeResourcePath.length === 0
+	) {
 		return {
 			ok: false,
 			stage: 'validate',
@@ -365,6 +371,7 @@ function parseValidate(json: Record<string, unknown>): SdkValidateResult | SdkFa
 		mode: 'validate',
 		specVersion: specVersion as SdkValidateResult['specVersion'],
 		binaryContainerVersion: containerVersion as SdkValidateResult['binaryContainerVersion'],
+		phonemeResourcePath,
 		inventory: json.inventory ?? null,
 		diagnostics: parseDiagnostics(json.diagnostics)
 	};

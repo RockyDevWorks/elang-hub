@@ -140,6 +140,7 @@ describe('H0208 — validation stage boundaries', () => {
 				ok: true,
 				specVersion: SUPPORTED_SPEC_VERSION,
 				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				phonemeResourcePath: 'Linguistics/phonemes.eld',
 				inventory: { phonemes: [{ ipa: 'a' }] },
 				diagnostics: []
 			})
@@ -149,6 +150,7 @@ describe('H0208 — validation stage boundaries', () => {
 		if (result.ok && result.mode === 'validate') {
 			expect(result.specVersion).toBe(SUPPORTED_SPEC_VERSION);
 			expect(result.binaryContainerVersion).toBe(SUPPORTED_BINARY_CONTAINER_VERSION);
+			expect(result.phonemeResourcePath).toBe('Linguistics/phonemes.eld');
 			expect(result.inventory).toEqual({ phonemes: [{ ipa: 'a' }] });
 		} else {
 			expect.fail('expected a validate verdict');
@@ -171,18 +173,20 @@ describe('H0208 — validation stage boundaries', () => {
 			// that is the structural guarantee that prevents a Hub UI
 			// from promoting an inspect verdict to a successful validate.
 			expect('inventory' in inspect).toBe(false);
+			expect('phonemeResourcePath' in inspect).toBe(false);
 		}
 		const validate = await client.validate(new Uint8Array(10));
-		// The client faithfully reports the verdict the service sent;
-		// it does NOT silently rewrite a validate call into an inspect.
-		// The Hub view-model layer (H03) is responsible for rejecting
-		// a validate verdict with a missing/empty inventory.
-		expect(validate.ok).toBe(true);
-		if (validate.ok) {
-			expect(validate.mode).toBe('validate');
-			if (validate.mode === 'validate') {
-				expect(validate.inventory).toBeNull();
-			}
+		// A validate verdict that lacks the manifest-derived phoneme
+		// path is rejected at the contract boundary — the Hub cannot
+		// render a phoneme view without knowing which resource the
+		// inventory was loaded from (H0301). The view-model layer
+		// (H03) is responsible for further rejection of a validate
+		// verdict whose `inventory` payload fails to match the
+		// `InventoryPayload` shape.
+		expect(validate.ok).toBe(false);
+		if (!validate.ok) {
+			expect(validate.stage).toBe('validate');
+			expect(validate.code).toBe('malformed_response');
 		}
 	});
 });

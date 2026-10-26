@@ -125,6 +125,7 @@ describe('SdkClient.validate (H0204)', () => {
 				ok: true,
 				specVersion: SUPPORTED_SPEC_VERSION,
 				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				phonemeResourcePath: 'Linguistics/phonemes.eld',
 				inventory: { phonemes: [] },
 				diagnostics: []
 			})
@@ -133,6 +134,7 @@ describe('SdkClient.validate (H0204)', () => {
 		const result = await client.validate(new Uint8Array(10));
 		expect(result.ok).toBe(true);
 		if (result.ok && result.mode === 'validate') {
+			expect(result.phonemeResourcePath).toBe('Linguistics/phonemes.eld');
 			expect(result.inventory).toEqual({ phonemes: [] });
 		}
 	});
@@ -320,6 +322,7 @@ describe.each(['inspect', 'verify', 'validate'] as const)(
 			binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
 			discoveredResources: 3,
 			verifiedResources: 3,
+			phonemeResourcePath: 'Linguistics/phonemes.eld',
 			inventory: { phonemes: [] }
 		};
 
@@ -374,6 +377,7 @@ describe('SdkClient response byte limit', () => {
 			ok: true,
 			specVersion: SUPPORTED_SPEC_VERSION,
 			binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+			phonemeResourcePath: 'Linguistics/phonemes.eld',
 			inventory: { label: 'é🙂' }
 		});
 		const encoded = new TextEncoder().encode(json);

@@ -27,24 +27,26 @@
  * @returns negative if `a < b`, positive if `a > b`, zero if equal.
  */
 export function compareCodePoints(a: string, b: string): number {
+	// JS string equality is value-based: two strings with identical code
+	// points are `===` even if they were built independently. This makes
+	// the `an.done && bn.done` branch below provably unreachable.
 	if (a === b) return 0;
 	// String iterator yields code points (handles surrogate pairs).
 	const ai = a[Symbol.iterator]();
 	const bi = b[Symbol.iterator]();
-	while (true) {
-		const an = ai.next();
-		const bn = bi.next();
-		if (an.done && bn.done) return 0;
-		if (an.done) return -1;
-		if (bn.done) return 1;
-		const ac = an.value.codePointAt(0);
-		const bc = bn.value.codePointAt(0);
-		// `codePointAt` on a code point returned by the iterator is
-		// always defined — the iterator only yields complete code points.
-		// The `?? 0` is a TypeScript-only belt-and-braces.
-		const diff = (ac ?? 0) - (bc ?? 0);
+	let an = ai.next();
+	let bn = bi.next();
+	while (!an.done && !bn.done) {
+		// `codePointAt(0)` on a non-empty code point is always defined.
+		const diff = an.value.codePointAt(0)! - bn.value.codePointAt(0)!;
 		if (diff !== 0) return diff;
+		an = ai.next();
+		bn = bi.next();
 	}
+	// One iterator is exhausted. If `a` ran out first (or simultaneously
+	// with `b`, which is unreachable), `a` is a prefix of `b` → `a < b`.
+	if (an.done) return -1;
+	return 1;
 }
 
 export type GroupKind = 'consonants' | 'vowels' | { readonly name: string };

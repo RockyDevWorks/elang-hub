@@ -23,7 +23,6 @@
  */
 
 import type { SdkDiagnostic, SdkValidateResult } from '../sdk/contract';
-import { SUPPORTED_BINARY_CONTAINER_VERSION, SUPPORTED_SPEC_VERSION } from '../sdk/contract';
 
 import { buildPackageView, type PackageView } from './package';
 import { buildPhonemeInventoryView, type PhonemeInventoryView } from './phonemes';
@@ -86,9 +85,12 @@ export function extractPhonemeView(result: SdkValidateResult): PhonemeViewResult
 		};
 	}
 
+	// Both fields are required by the `SdkValidateResult` contract; the
+	// type system guarantees they are present. We surface them verbatim
+	// to the view so the UI can render the versions the SDK reported.
 	const specVersions = {
-		specVersion: result.specVersion ?? SUPPORTED_SPEC_VERSION,
-		binaryContainerVersion: result.binaryContainerVersion ?? SUPPORTED_BINARY_CONTAINER_VERSION
+		specVersion: result.specVersion,
+		binaryContainerVersion: result.binaryContainerVersion
 	};
 
 	const packageView = buildPackageView(narrow.value.package, specVersions);

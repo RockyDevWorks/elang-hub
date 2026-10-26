@@ -219,6 +219,30 @@ describe('narrowInventoryPayload — package field rejection', () => {
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.path).toBe('package.name');
 	});
+
+	it('rejects an empty namespace', () => {
+		const r = narrowInventoryPayload(withOverride(validPayload(), 'namespace', ''));
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('namespace_invalid');
+			expect(r.error.path).toBe('package.namespace');
+		}
+	});
+
+	it('rejects an empty languageName', () => {
+		const r = narrowInventoryPayload(withOverride(validPayload(), 'languageName', ''));
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('language_name_invalid');
+			expect(r.error.path).toBe('package.languageName');
+		}
+	});
+
+	it('rejects an empty languageVersion (early-return path through narrowSemVerString)', () => {
+		const r = narrowInventoryPayload(withOverride(validPayload(), 'languageVersion', ''));
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('language_version_invalid');
+	});
 });
 
 describe('narrowInventoryPayload — group rejection', () => {
@@ -247,6 +271,41 @@ describe('narrowInventoryPayload — group rejection', () => {
 		const r = narrowInventoryPayload(broken);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('roots_invalid');
+	});
+
+	it('rejects a group entry that is not a JSON object', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0] = 'not a group object';
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('group_invalid');
+	});
+
+	it('rejects a custom group name longer than 32 chars', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups.push({
+			kind: { name: 'a'.repeat(33) },
+			roots: []
+		});
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('group_name_invalid');
+	});
+});
+
+describe('narrowInventoryPayload — inventory envelope rejection', () => {
+	it('rejects inventory.groups that is not an array', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups = 'not an array';
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('groups_invalid');
+			expect(r.error.path).toBe('inventory.groups');
+		}
 	});
 });
 
@@ -279,6 +338,24 @@ describe('narrowInventoryPayload — root rejection', () => {
 			expect(r.error.code).toBe('root_ipa_invalid');
 			expect(r.error.path).toBe('inventory.groups[1].roots[0].ipa');
 		}
+	});
+
+	it('rejects a root entry that is not a JSON object', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0] = 42;
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('root_invalid');
+	});
+
+	it('rejects a root whose allophones field is not an array', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0].allophones = 'not an array';
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('allophones_invalid');
 	});
 });
 
@@ -319,6 +396,30 @@ describe('narrowInventoryPayload — allophone rejection', () => {
 		const r = narrowInventoryPayload(p);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('allophone_ipa_invalid');
+	});
+
+	it('rejects an allophone entry that is not a JSON object', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0].allophones = ['not an allophone'];
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('allophone_invalid');
+	});
+
+	it('rejects an allophone whose when condition is malformed', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0].allophones = [
+			{
+				ipa: 'ɾ',
+				roman: null,
+				when: { children: [{ kind: 'xor', left: 1, right: 2 }] }
+			}
+		];
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
 	});
 });
 
@@ -632,6 +733,45 @@ describe('narrowInventoryPayload — condition tree rejection', () => {
 		const p = validPayload();
 		const broken = JSON.parse(JSON.stringify(p));
 		broken.inventory.groups[0].roots[0].when = 'not an object';
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
+	});
+
+	it('rejects a `group` node whose child is not a valid condition node', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0].when = {
+			children: [
+				{
+					kind: 'group',
+					children: [
+						{ kind: 'predicate', predicate: { kind: 'word-position', value: 'initial' } },
+						{ kind: 'xor', left: 1, right: 2 }
+					]
+				}
+			]
+		};
+		const r = narrowInventoryPayload(broken);
+		expect(r.ok).toBe(false);
+		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
+	});
+
+	it('rejects an `or` node whose right is not a valid condition node', () => {
+		const p = validPayload();
+		const broken = JSON.parse(JSON.stringify(p));
+		broken.inventory.groups[0].roots[0].when = {
+			children: [
+				{
+					kind: 'or',
+					left: {
+						kind: 'predicate',
+						predicate: { kind: 'word-position', value: 'initial' }
+					},
+					right: { kind: 'xor', left: 1, right: 2 }
+				}
+			]
+		};
 		const r = narrowInventoryPayload(broken);
 		expect(r.ok).toBe(false);
 		if (!r.ok) expect(r.error.code).toBe('condition_invalid');

@@ -39,6 +39,23 @@ describe('renderPredicate', () => {
 		// already validated it against the pinned repertoire.
 		expect(renderPredicate({ kind: 'previous-phoneme', ipa: 'ŋ' })).toBe('previous-phoneme: ŋ');
 	});
+
+	it('truncates with an ellipsis when display text exceeds MAX_DISPLAY_TEXT', () => {
+		// Defence in depth: the SDK has already validated everything, but
+		// if a payload somehow carries an unusually long identifier, the
+		// Hub truncates instead of rendering arbitrary control bytes.
+		const longValue = 'initial-'.repeat(30); // 240 chars
+		const v = predicateView({
+			kind: 'word-position',
+			value: longValue as 'initial'
+		});
+		expect(v.kind).toBe('predicate');
+		if (v.kind !== 'predicate') return;
+		expect(v.displayText.length).toBe(200);
+		expect(v.displayText.endsWith('…')).toBe(true);
+		// The first 199 chars are preserved exactly (no normalisation).
+		expect(v.displayText.slice(0, 199)).toBe(`word-position: ${longValue}`.slice(0, 199));
+	});
 });
 
 describe('predicateView', () => {

@@ -114,6 +114,19 @@ export interface SdkValidateResult {
 	readonly specVersion: typeof SUPPORTED_SPEC_VERSION;
 	readonly binaryContainerVersion: typeof SUPPORTED_BINARY_CONTAINER_VERSION;
 	/**
+	 * The resource path the EPF manifest declared for the phoneme
+	 * inventory, resolved against the archive index. The validation
+	 * service parses the manifest, validates that the path is a
+	 * well-formed package-relative resource path, and verifies the
+	 * path is actually present in the container's resource index.
+	 *
+	 * The Hub MUST treat this path as authoritative — H0301 forbids
+	 * hardcoding the ELD path. Every phoneme-resource reference in
+	 * the Hub goes through this field, not through a constant like
+	 * `Linguistics/phonemes.eld`.
+	 */
+	readonly phonemeResourcePath: string;
+	/**
 	 * Opaque payload from the SDK containing the validated phoneme
 	 * inventory. The Hub MUST treat this as untrusted shape; the
 	 * H03 view model is responsible for narrowing it. v0.1.0 keeps

@@ -18,6 +18,7 @@
  */
 
 import { toHubError } from './errors';
+import { checkSupportedVersions } from './version';
 import {
 	asSdkErrorCode,
 	type SdkCallOptions,
@@ -138,16 +139,37 @@ export class SdkClient {
 				return this.#failure(mode, 'unknown', `Service responded with HTTP ${response.status}.`);
 			}
 
-			// Bound the parsed response so a hostile service cannot
-			// wedge the request thread on a multi-GB JSON.
-			const text = await response.text();
-			if (text.length > MAX_SDK_RESPONSE_BYTES) {
-				return this.#failure(
-					mode,
-					'malformed_response',
-					'Service response exceeded the size limit.'
-				);
+			// Bound bytes while reading, before decoding or parsing JSON.
+			const chunks: Uint8Array[] = [];
+			let totalBytes = 0;
+			const reader = response.body?.getReader();
+			if (reader) {
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+						totalBytes += value.byteLength;
+						if (totalBytes > MAX_SDK_RESPONSE_BYTES) {
+							void reader.cancel().catch(() => {});
+							return this.#failure(
+								mode,
+								'malformed_response',
+								'Service response exceeded the size limit.'
+							);
+						}
+						chunks.push(value);
+					}
+				} finally {
+					reader.releaseLock();
+				}
 			}
+			const body = new Uint8Array(totalBytes);
+			let offset = 0;
+			for (const chunk of chunks) {
+				body.set(chunk, offset);
+				offset += chunk.byteLength;
+			}
+			const text = new TextDecoder().decode(body);
 
 			let json: unknown;
 			try {
@@ -158,6 +180,9 @@ export class SdkClient {
 
 			return parseSdkResult(json, mode);
 		} catch (e) {
+			if (e instanceof DOMException && e.name === 'AbortError' && opts?.signal?.aborted) {
+				return this.#failure(modeToStage(mode), 'cancelled', 'Validation was cancelled.');
+			}
 			return mapTransportError(mode, e);
 		} finally {
 			cancel();
@@ -221,6 +246,15 @@ function parseSdkResult(json: unknown, mode: SdkMode): SdkResult {
 	}
 
 	if (json.ok === true) {
+		if ('mode' in json && json.mode !== mode) {
+			return {
+				ok: false,
+				stage: modeToStage(mode),
+				code: 'malformed_response',
+				message: 'Service response mode did not match the requested mode.',
+				diagnostics: []
+			};
+		}
 		if (mode === 'inspect') return parseInspect(json);
 		if (mode === 'verify') return parseVerify(json);
 		return parseValidate(json);
@@ -262,6 +296,11 @@ function parseInspect(json: Record<string, unknown>): SdkInspectResult | SdkFail
 			diagnostics: []
 		};
 	}
+	const versionFailure = checkSupportedVersions({
+		specVersion,
+		binaryContainerVersion: containerVersion
+	});
+	if (versionFailure) return versionFailure;
 	return {
 		ok: true,
 		mode: 'inspect',
@@ -289,6 +328,11 @@ function parseVerify(json: Record<string, unknown>): SdkVerifyResult | SdkFailur
 			diagnostics: []
 		};
 	}
+	const versionFailure = checkSupportedVersions({
+		specVersion,
+		binaryContainerVersion: containerVersion
+	});
+	if (versionFailure) return versionFailure;
 	return {
 		ok: true,
 		mode: 'verify',
@@ -311,6 +355,11 @@ function parseValidate(json: Record<string, unknown>): SdkValidateResult | SdkFa
 			diagnostics: []
 		};
 	}
+	const versionFailure = checkSupportedVersions({
+		specVersion,
+		binaryContainerVersion: containerVersion
+	});
+	if (versionFailure) return versionFailure;
 	return {
 		ok: true,
 		mode: 'validate',

@@ -32,7 +32,8 @@ describe('assertBodyWithinLimit', () => {
 			expect(e).toMatchObject({
 				ok: false,
 				code: 'request_too_large',
-				stage: 'inspect'
+				stage: 'inspect',
+				diagnostics: []
 			});
 		}
 	});

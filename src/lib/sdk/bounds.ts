@@ -36,7 +36,8 @@ export function assertBodyWithinLimit(bytes: Uint8Array): void {
 			stage: 'inspect',
 			code: 'request_too_large',
 			message: `Request body is ${bytes.byteLength} bytes; the SDK adapter limit is ${MAX_SDK_BODY_BYTES}.`,
-			path: 'request.body'
+			path: 'request.body',
+			diagnostics: []
 		} as const;
 	}
 }

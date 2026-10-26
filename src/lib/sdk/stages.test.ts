@@ -81,18 +81,11 @@ describe('H0208 — validation stage boundaries', () => {
 			})
 		);
 		const result = await client.inspect(new Uint8Array(10));
-		expect(result.ok).toBe(true);
-		// The client's parse does not call the version gate; the Hub
-		// MUST do that itself before treating the verdict as success.
-		// We exercise the gate directly here:
-		if (result.ok) {
-			const { checkSupportedVersions } = await import('./version');
-			const gate = checkSupportedVersions({
-				specVersion: result.specVersion,
-				binaryContainerVersion: result.binaryContainerVersion
-			});
-			expect(gate?.code).toBe('unsupported_spec_version');
-		}
+		expect(result).toMatchObject({
+			ok: false,
+			stage: 'inspect',
+			code: 'unsupported_spec_version'
+		});
 	});
 
 	it('rejects an incompatible binary container version', async () => {
@@ -105,14 +98,11 @@ describe('H0208 — validation stage boundaries', () => {
 			})
 		);
 		const result = await client.inspect(new Uint8Array(10));
-		if (result.ok) {
-			const { checkSupportedVersions } = await import('./version');
-			const gate = checkSupportedVersions({
-				specVersion: result.specVersion,
-				binaryContainerVersion: result.binaryContainerVersion
-			});
-			expect(gate?.code).toBe('unsupported_binary_container_version');
-		}
+		expect(result).toMatchObject({
+			ok: false,
+			stage: 'inspect',
+			code: 'unsupported_binary_container_version'
+		});
 	});
 
 	it('rejects an invalid ELD', async () => {

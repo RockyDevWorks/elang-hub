@@ -16,7 +16,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SdkClient, toHubError } from './client';
 import { SUPPORTED_BINARY_CONTAINER_VERSION, SUPPORTED_SPEC_VERSION } from './contract';
-import { MAX_SDK_BODY_BYTES } from './bounds';
+import { MAX_SDK_BODY_BYTES, MAX_SDK_RESPONSE_BYTES } from './bounds';
 
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
@@ -165,6 +165,7 @@ describe('SdkClient error paths (H0206, H0207)', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.code).toBe('request_too_large');
+			expect(result.diagnostics).toEqual([]);
 		}
 		expect(fetchImpl).not.toHaveBeenCalled();
 	});
@@ -235,6 +236,50 @@ describe('SdkClient error paths (H0206, H0207)', () => {
 		expect(fetchImpl).not.toHaveBeenCalled();
 	});
 
+	it('returns cancelled when the caller aborts a pending fetch', async () => {
+		const caller = new AbortController();
+		const fetchImpl = vi.fn<typeof fetch>(
+			async (_input, init) =>
+				new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener(
+						'abort',
+						() => reject(new DOMException('Aborted', 'AbortError')),
+						{ once: true }
+					);
+				})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const pending = client.validate(new Uint8Array(10), { signal: caller.signal });
+		expect(fetchImpl).toHaveBeenCalledOnce();
+		caller.abort();
+		expect(await pending).toMatchObject({ ok: false, stage: 'validate', code: 'cancelled' });
+	});
+
+	it.each([
+		{ error: new TypeError('fetch failed'), code: 'service_unavailable' },
+		{ error: new Error('unexpected failure'), code: 'unknown' }
+	])('preserves $code for an unrelated error after cancellation', async ({ error, code }) => {
+		const caller = new AbortController();
+		const fetchImpl = vi.fn(async () => {
+			caller.abort();
+			throw error;
+		});
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10), { signal: caller.signal });
+		expect(result).toMatchObject({ ok: false, stage: 'validate', code });
+	});
+
+	it('preserves timeout mapping for an AbortError without caller cancellation', async () => {
+		const fetchImpl = vi.fn(async () => {
+			throw new DOMException('Aborted', 'AbortError');
+		});
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.verify(new Uint8Array(10), {
+			signal: new AbortController().signal
+		});
+		expect(result).toMatchObject({ ok: false, stage: 'verify', code: 'timeout' });
+	});
+
 	it('translates a network error to service_unavailable', async () => {
 		const fetchImpl = vi.fn(async () => {
 			throw new TypeError('fetch failed');
@@ -263,5 +308,128 @@ describe('SdkClient error paths (H0206, H0207)', () => {
 			const hub = toHubError(result);
 			expect(hub.code).toBe('internal_error');
 		}
+	});
+});
+
+describe.each(['inspect', 'verify', 'validate'] as const)(
+	'SdkClient.%s success boundary',
+	(mode) => {
+		const success = {
+			ok: true,
+			specVersion: SUPPORTED_SPEC_VERSION,
+			binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+			discoveredResources: 3,
+			verifiedResources: 3,
+			inventory: { phonemes: [] }
+		};
+
+		it.each([false, true])(
+			'accepts a supported response with explicit mode: %s',
+			async (explicit) => {
+				const fetchImpl = vi.fn(async () =>
+					jsonResponse({ ...success, ...(explicit ? { mode } : {}) })
+				);
+				const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+				expect(await client[mode](new Uint8Array(10))).toMatchObject({ ok: true, mode });
+			}
+		);
+
+		it.each(['inspect', 'verify', 'validate', 'unknown', null].filter((value) => value !== mode))(
+			'rejects an explicitly mismatched mode %s',
+			async (responseMode) => {
+				const fetchImpl = vi.fn(async () => jsonResponse({ ...success, mode: responseMode }));
+				const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+				expect(await client[mode](new Uint8Array(10))).toMatchObject({
+					ok: false,
+					stage: mode,
+					code: 'malformed_response'
+				});
+			}
+		);
+
+		it.each([
+			{ field: 'specVersion', code: 'unsupported_spec_version', path: 'descriptor.spec_version' },
+			{
+				field: 'binaryContainerVersion',
+				code: 'unsupported_binary_container_version',
+				path: 'container.header.binary_container_version'
+			}
+		])('rejects unsupported $field on success', async ({ field, code, path }) => {
+			const fetchImpl = vi.fn(async () => jsonResponse({ ...success, [field]: '99.0.0' }));
+			const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+			expect(await client[mode](new Uint8Array(10))).toMatchObject({
+				ok: false,
+				stage: 'inspect',
+				code,
+				path,
+				diagnostics: []
+			});
+		});
+	}
+);
+
+describe('SdkClient response byte limit', () => {
+	it('accepts exactly the byte limit and decodes UTF-8 split across chunks', async () => {
+		const json = JSON.stringify({
+			ok: true,
+			specVersion: SUPPORTED_SPEC_VERSION,
+			binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+			inventory: { label: 'é🙂' }
+		});
+		const encoded = new TextEncoder().encode(json);
+		const body = new Uint8Array(MAX_SDK_RESPONSE_BYTES).fill(32);
+		body.set(encoded);
+		const split = encoded.indexOf(0xf0) + 1;
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(body.subarray(0, split));
+				controller.enqueue(body.subarray(split));
+				controller.close();
+			}
+		});
+		const fetchImpl = vi.fn(async () => new Response(stream));
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		expect(await client.validate(new Uint8Array(10))).toMatchObject({
+			ok: true,
+			inventory: { label: 'é🙂' }
+		});
+		expect(stream.locked).toBe(false);
+	});
+
+	it('counts multibyte bytes and cancels without reading the rest of an oversized response', async () => {
+		const chunk = new TextEncoder().encode('é'.repeat(MAX_SDK_RESPONSE_BYTES / 4));
+		const cancel = vi.fn();
+		let reads = 0;
+		const stream = new ReadableStream<Uint8Array>(
+			{
+				pull(controller) {
+					reads++;
+					controller.enqueue(reads <= 2 ? chunk : new Uint8Array([32]));
+				},
+				cancel
+			},
+			{ highWaterMark: 0 }
+		);
+		const fetchImpl = vi.fn(async () => new Response(stream));
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		expect(await client.verify(new Uint8Array(10))).toMatchObject({
+			ok: false,
+			stage: 'verify',
+			code: 'malformed_response',
+			message: 'Service response exceeded the size limit.'
+		});
+		expect(reads).toBe(3);
+		expect(cancel).toHaveBeenCalledOnce();
+		expect(stream.locked).toBe(false);
+	});
+
+	it('treats an absent response body as malformed JSON', async () => {
+		const fetchImpl = vi.fn(async () => new Response(null));
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		expect(await client.inspect(new Uint8Array(10))).toMatchObject({
+			ok: false,
+			stage: 'inspect',
+			code: 'malformed_response'
+		});
 	});
 });

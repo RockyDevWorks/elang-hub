@@ -12,6 +12,24 @@ import { firstBoundedDetail, toHubError } from './errors';
 import type { SdkFailure } from './contract';
 
 describe('toHubError (H0206)', () => {
+	it.each(['inspect', 'verify', 'validate'] as const)(
+		'preserves the %s stage with and without detail',
+		(stage) => {
+			for (const path of [undefined, 'resource.path']) {
+				const hub = toHubError({
+					ok: false,
+					stage,
+					code: 'unknown',
+					message: 'x',
+					path,
+					diagnostics: []
+				});
+				expect(hub.stage).toBe(stage);
+				expect(hub.detail).toBe(path);
+			}
+		}
+	);
+
 	const allSdkCodes: SdkFailure['code'][] = [
 		'unsupported_spec_version',
 		'unsupported_binary_container_version',

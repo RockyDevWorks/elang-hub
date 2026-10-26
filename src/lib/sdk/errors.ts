@@ -11,7 +11,7 @@
  * need to re-sanitize.
  */
 
-import type { SdkDiagnostic, SdkErrorCode, SdkFailure } from './contract';
+import type { SdkDiagnostic, SdkErrorCode, SdkFailure, ValidationStage } from './contract';
 
 /** Hard cap on user-visible message length. */
 const MAX_MESSAGE_LENGTH = 280;
@@ -36,6 +36,7 @@ export type HubErrorCode =
 
 /** Bounded, escaped, user-facing error surfaced by the Hub. */
 export interface HubError {
+	readonly stage: ValidationStage;
 	readonly code: HubErrorCode;
 	readonly message: string;
 	/** Optional bounded, escaped detail (e.g. which field). */
@@ -148,7 +149,8 @@ export function toHubError(failure: SdkFailure): HubError {
 	const code = mapSdkCode(failure.code);
 	const message = HUB_ERROR_MESSAGES[code];
 	const detail = failure.path ? bound(escape(failure.path)) : undefined;
-	return detail ? { code, message, detail } : { code, message };
+	const stage = failure.stage;
+	return detail ? { stage, code, message, detail } : { stage, code, message };
 }
 
 /**

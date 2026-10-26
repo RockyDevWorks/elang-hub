@@ -129,15 +129,22 @@ jobs:
       - name: Run unit tests with coverage
         run: npm run coverage
 
+      # Codecov upload is best-effort: it requires a `CODECOV_TOKEN`
+      # repo secret because the `release/*` branches are protected.
+      # The token is obtained from https://app.codecov.io/ after
+      # connecting the repo. Until the secret is configured, this
+      # step logs the error and continues — coverage is still
+      # generated locally and is visible via `npm run coverage`.
       - name: Upload coverage to Codecov
         # codecov-action is pinned to an immutable commit SHA per the
         # repo's supply-chain policy (mutable tag refs can be force-
         # pushed by upstream). v5.5.5 = 0fb7174895f61a3b6b78fc075e0cd60383518dac
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5.5.5
+        continue-on-error: true
         with:
-          # The public Codecov uploader; no token required for
-          # public repos. The Hub repo is public, so the default
-          # anonymous upload is sufficient.
           files: ./coverage/lcov.info
           flags: unit
           fail_ci_if_error: false
+          # Pass the token if it is configured in repo secrets; the
+          # action will skip gracefully when the variable is empty.
+          token: ${{ secrets.CODECOV_TOKEN }}

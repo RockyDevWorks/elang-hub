@@ -90,6 +90,17 @@ jobs:
   docker:
     name: Build (Docker)
     runs-on: ubuntu-latest
+    # Job-level, not step-level: `docker-compose.yml` declares
+    # SDK_SERVICE_URL as required (`${SDK_SERVICE_URL:?...}`), so ANY
+    # step that touches the compose file — including the teardown —
+    # fails to even parse it when the variable is missing. A step-scoped
+    # `env:` block breaks the teardown.
+    env:
+      # Points at a non-resolvable host on purpose: the Hub must fail
+      # CLOSED with 503 when the validation service is unreachable, and
+      # the container must stay up and healthy.
+      SDK_SERVICE_URL: https://validation-service.invalid
+      HUB_PORT: '3000'
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -100,14 +111,7 @@ jobs:
       # for an operator. It is the only place the container is
       # actually built — a broken Dockerfile fails here rather than
       # in a user's terminal.
-      #
-      # `SDK_SERVICE_URL` points at a non-resolvable host on purpose:
-      # the Hub must fail CLOSED with 503 when the validation service
-      # is unreachable, and the container must stay up and healthy.
       - name: Build and start the Compose stack
-        env:
-          SDK_SERVICE_URL: https://validation-service.invalid
-          HUB_PORT: '3000'
         run: docker compose up --detach --build
 
       - name: Smoke test the container
@@ -127,8 +131,25 @@ jobs:
             exit 1
           fi
 
-          # The image's own HEALTHCHECK must report healthy.
-          health=$(docker inspect --format '{{.State.Health.Status}}' elang-hub)
+          # The image's own HEALTHCHECK must report healthy. Its
+          # interval is 30s, so POLL for the status instead of
+          # sampling it once — the server answers well before Docker's
+          # first probe fires, and a single sample would read
+          # "starting" and fail the job on a healthy container.
+          health=starting
+          for attempt in $(seq 1 45); do
+            health=$(docker inspect --format '{{.State.Health.Status}}' elang-hub)
+            if [ "$health" = "healthy" ]; then
+              echo "container reported healthy after ${attempt} probe(s)"
+              break
+            fi
+            if [ "$health" = "unhealthy" ]; then
+              echo "::error::container reported unhealthy"
+              docker compose logs
+              exit 1
+            fi
+            sleep 2
+          done
           echo "container health: ${health}"
           test "$health" = "healthy"
 

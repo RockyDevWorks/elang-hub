@@ -5,6 +5,19 @@
 		<title>ELANG Hub</title>
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!-- H0406 — IPA typography. SIL OFL fonts cover the BMP and
+		     supplementary-plane IPA glyphs the Hub may render (multi-
+		     symbol IPA, combining diacritics, tie bars, spacing
+		     modifiers). The browser cascades through the stack and
+		     falls back to the user agent's serif when none load. No
+		     build-time bundling — fonts are CDN-served so the cached
+		     payload stays small. -->
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Doulos+SIL&family=Charis+SIL&family=Gentium+Plus:wght@400;700&display=swap"
+		/>
+
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
+		"build:node": "BUILD_TARGET=node vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -17,6 +18,7 @@
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-cloudflare": "^8.0.1",
+		"@sveltejs/adapter-node": "^6.0.0",
 		"@sveltejs/kit": "^3.1.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.3",

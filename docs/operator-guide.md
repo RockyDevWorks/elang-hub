@@ -290,34 +290,112 @@ rationale.
 
 ## 6. Deployment
 
-### 6.1 Target
+### 6.1 Targets
 
-The production build uses `@sveltejs/adapter-cloudflare` (`^8.0.1`).
-The output is a Cloudflare Workers bundle; the app runs on the
-Workers runtime (V8 isolate, workerd).
+The Hub ships from one source tree to two deployment targets.
 
-### 6.2 Required bindings / secrets
+| Target                       | Adapter                          | Build command        | Runtime              |
+| ---------------------------- | -------------------------------- | -------------------- | -------------------- |
+| Cloudflare Workers (v0.1.0)  | `@sveltejs/adapter-cloudflare` 8 | `npm run build`      | workerd (V8 isolate) |
+| Container / self-hosted Node | `@sveltejs/adapter-node` 6       | `npm run build:node` | Node.js ≥ 22.17      |
 
-- `SDK_SERVICE_URL` — the SDK service base URL. Set in the Cloudflare
-  dashboard under the Workers → Settings → Variables (or via
-  `wrangler secret put SDK_SERVICE_URL`).
+`npm run build` still produces the Workers bundle — the Cloudflare
+deployment path is unchanged by the container work. SvelteKit builds
+exactly one adapter per invocation, so the adapter is selected at
+build time in `vite.config.ts` (`BUILD_TARGET=node` selects the Node
+one). Every other setting — CSP, preprocess, the `$lib` alias, the
+Tailwind pipeline — is shared, so the two targets cannot drift apart
+in configuration.
+
+### 6.2 Required environment
+
+- `SDK_SERVICE_URL` — the SDK service base URL. On Cloudflare, set it
+  in the Workers dashboard under Settings → Variables (or via
+  `wrangler secret put SDK_SERVICE_URL`). In a container, pass it as
+  an environment variable (see §6.4).
 
   A misconfigured deployment fails loudly: `POST /api/phonemes`
   responds 503 with the message "The validation service URL is not
   configured on this deployment." The static page is unaffected.
 
+- `ORIGIN` — container only. SvelteKit uses it for absolute URL
+  construction and for its CSRF origin check. Set it to the public
+  origin of the Hub (for example `https://hub.example.com`). The
+  image defaults to `http://localhost:3000`, which suits local use
+  only.
+
+- `PORT` / `HOST` — container only. The image defaults to `3000` and
+  `0.0.0.0`.
+
 ### 6.3 Build
 
 ```bash
 npm ci
-npm run build
+npm run build        # Cloudflare Workers bundle
+npm run build:node   # Node server bundle (consumed by the container)
 ```
 
-The build reads `vite.config.ts`. The adapter bundle lands under
-`.svelte-kit/output/cloudflare/`. The CSP is wired in `vite.config.ts`
-and applied at the response layer — see §7.
+The build reads `vite.config.ts`. The Cloudflare adapter bundle lands
+under `.svelte-kit/output/cloudflare/`; the Node adapter bundle lands
+under `build/`, where `index.js` is the server entrypoint and
+`client/` holds the static assets. The CSP is wired in
+`vite.config.ts` and applied at the response layer — see §7.
 
-### 6.4 What does NOT ship
+### 6.4 Container deployment (Docker)
+
+The repository ships a `Dockerfile` and a `docker-compose.yml` that
+run the Hub as a standalone Node server.
+
+```bash
+cp .env.example .env    # then edit SDK_SERVICE_URL
+docker compose up --build
+```
+
+The Hub is then on <http://localhost:3000>.
+
+**Image shape.** The `Dockerfile` is a three-stage build:
+
+1. `deps` — `npm ci` with the full dependency tree.
+2. `build` — `npm run build:node`, producing `build/`.
+3. `runtime` — `npm ci --omit=dev` (production dependencies only) plus
+   the `build/` output, running as the unprivileged `node` user
+   (uid 1000) with `node build/index.js` as its entrypoint.
+
+SvelteKit's server code is bundled into `build/server/`, so the
+runtime stage needs only the production dependencies — `@lucide/svelte`
+and its transitive tree — rather than the whole toolchain.
+
+**Runtime configuration.** Every value comes from the environment; no
+secret is baked into the image.
+
+| Variable          | Required | Default in image        | Purpose                         |
+| ----------------- | -------- | ----------------------- | ------------------------------- |
+| `SDK_SERVICE_URL` | yes      | —                       | SDK validation service base URL |
+| `ORIGIN`          | no       | `http://localhost:3000` | Public origin of the Hub        |
+| `PORT`            | no       | `3000`                  | Listen port                     |
+| `HOST`            | no       | `0.0.0.0`               | Listen address                  |
+
+**Health.** The image declares a `HEALTHCHECK` that fetches `/` using
+Node's built-in `fetch` — no extra packages. `docker compose ps`
+reports the container as `healthy` once the server answers.
+
+**Hardening.** `docker-compose.yml` runs the container with a read-only
+root filesystem (plus a `tmpfs` at `/tmp`), all Linux capabilities
+dropped, and `no-new-privileges`. The app performs no filesystem
+writes at runtime, so none of these restrict it. Relax one by
+overriding it in a `docker-compose.override.yml` — add a writable
+path to the `tmpfs` list rather than disabling `read_only`.
+
+**Not containerised.** The ELANG SDK validation service is a separate
+deployment (`elang-rs`). Point `SDK_SERVICE_URL` at your Fly.io
+deployment or another reachable instance.
+
+**Verification.** CI runs `docker compose up --build` and asserts that
+the container serves `GET /` with 200, reports healthy, and fails
+closed with 503 on `POST /api/validate` when the validation service is
+unconfigured.
+
+### 6.5 What does NOT ship
 
 The v0.1.0 deploy ships only the SvelteKit app — there is no separate
 API service, no background worker, no scheduled job, no KV or D1

@@ -94,12 +94,23 @@ function requestTooLarge(byteLength: number): Response {
  * so the SDK client can compute SHA-256s if it needs to.
  */
 export const POST: RequestHandler = async ({ request }) => {
+	// Resolve the service URL BEFORE we touch the body. A
+	// misconfigured deployment must reject with 503 without
+	// buffering any bytes; reading first would buffer up to
+	// Cloudflare's documented request-body limit (100 MB on
+	// Free/Pro, up to 5 GB on Enterprise) before the check
+	// fires.
+	const serviceUrl = resolveServiceUrl();
+
+	// Cheap pre-check: a Content-Length header above the SDK cap
+	// lets us reject before opening the body stream. The cap is
+	// still enforced while reading — Content-Length is a hint,
+	// not a guarantee.
 	const contentLength = Number(request.headers.get('content-length') ?? '0');
 	if (Number.isFinite(contentLength) && contentLength > MAX_SDK_BODY_BYTES) {
 		return requestTooLarge(contentLength);
 	}
 
-	const serviceUrl = resolveServiceUrl();
 	const chunks: Uint8Array[] = [];
 	let totalBytes = 0;
 	const reader = request.body?.getReader();

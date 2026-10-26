@@ -22,7 +22,13 @@ ARG NODE_VERSION=22-alpine
 FROM node:${NODE_VERSION} AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+
+# `--ignore-scripts` runs NO package lifecycle script during install.
+# The build needs none: esbuild and workerd ship their platform
+# binaries as optionalDependencies, so the executables are present
+# without a postinstall hook. Keeping scripts off means the image's
+# dependency tree cannot execute anything at install time.
+RUN npm ci --ignore-scripts --no-audit --no-fund
 
 # ── Stage 2: produce the Node-target build output ────────────────────────────
 FROM deps AS build
@@ -42,7 +48,12 @@ ENV NODE_ENV=production \
     ORIGIN=http://localhost:3000
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund \
+
+# `--ignore-scripts` for the same reason as the deps stage. The
+# runtime tree is `@lucide/svelte` plus its transitive dependencies,
+# none of which have install scripts — and nothing in the shipped
+# dependency tree should execute code while it is being installed.
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
  && npm cache clean --force
 
 # adapter-node emits build/ containing:

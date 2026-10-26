@@ -26,14 +26,16 @@ Key constraints:
 - **Styling:** Tailwind CSS
 - **Component library:** shadcn-svelte (accessible, customizable components)
 - **Icons:** Lucide icons
-- **Deployment:** Cloudflare Workers via `@sveltejs/adapter-cloudflare` (the emitted static assets remain Pages-compatible)
+- **Deployment:** Cloudflare Workers via `@sveltejs/adapter-cloudflare`
+
+**Compatibility note:** The emitted static assets remain compatible with Cloudflare Pages.
 
 **Rationale:**
 
 - SvelteKit provides excellent DX, flexible rendering (SSR/SSG/CSR), and strong TypeScript support
 - Tailwind CSS enables rapid UI development with consistent design
 - shadcn-svelte delivers accessible, well-tested components without heavy framework lock-in
-- Cloudflare Pages offers fast edge delivery, zero-config deployment, and generous free tier (the adapter emits a Workers entry point; the static assets are Pages-compatible)
+- Cloudflare Workers provides global edge execution for the SvelteKit frontend via the adapter’s Workers entry point
 
 ### Pinned major versions
 
@@ -66,9 +68,10 @@ and ship in v0.1.0.
   (`undici`, pulled in by `miniflare` via `wrangler`) is cleared at the
   source: `wrangler` is declared as a direct devDependency at `^4.153.0`,
   which resolves `miniflare` 5.20261023 and `undici` 7.30.1 naturally.
-  `npm audit --audit-level=moderate` therefore exits 0 with an empty
-  `overrides` map, and a patched transitive dependency cannot be silently
-  regressed by a later parent release.
+  The current locked dependency tree passes
+  `npm audit --audit-level=moderate` without an `overrides` block.
+  Dependencies must be audited whenever they change; a later parent
+  release may reintroduce a vulnerable transitive dependency.
 - **Known non-blocking item.** SvelteKit 3 deprecates the
   `config.alias` option; the warning is retained rather than silenced,
   so the deprecation stays visible until the migration to subpath
@@ -96,7 +99,7 @@ and ship in v0.1.0.
 ```
 User uploads .elang file
     ↓
-Cloudflare Pages (SvelteKit frontend)
+Cloudflare Workers (SvelteKit frontend)
     ↓ HTTP POST /validate
 Fly.io validation API
     ↓ exec `elang validate`
@@ -104,7 +107,7 @@ elang-rs CLI (Rust binary)
     ↓ return validation results + extracted phoneme data
 Fly.io API (JSON response)
     ↓
-Cloudflare Pages renders phoneme viewer
+Cloudflare Workers renders phoneme viewer
 ```
 
 ### SDK Integration Policy
@@ -121,7 +124,7 @@ Cloudflare Pages renders phoneme viewer
 - Clear separation of concerns: UI and validation logic are independently deployable
 - Leverages authoritative ELANG validation without forking or reimplementing
 - SvelteKit + Tailwind + shadcn-svelte = fast UI development with great DX
-- Cloudflare Pages provides excellent global edge performance for static/SSR content
+- Cloudflare Workers provides global edge delivery for static assets and SSR content
 - Fly.io free tier keeps infrastructure costs at zero for v0.1.0
 - Architecture supports future enhancements (caching, rate limiting, multi-region validation)
 
@@ -148,7 +151,7 @@ Cloudflare Pages renders phoneme viewer
 - ELANG Hub Issue #2: [HUB][v0.1.0][H00] Setup & CI
 - `elang-rs` repository: https://github.com/RockyDevWorks/elang-rs
 - SvelteKit documentation: https://svelte.dev/docs/kit
-- Cloudflare Pages documentation: https://developers.cloudflare.com/pages
+- Cloudflare Workers documentation: https://developers.cloudflare.com/workers/
 - Fly.io documentation: https://fly.io/docs
 
 ## Amendment history

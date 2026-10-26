@@ -275,6 +275,11 @@ all input sizes are bounded at every boundary, every operation
 carries a wall-clock timeout or `AbortSignal`, and the rendering
 budget is finite (`MAX_SDK_DIAGNOSTICS`, `MAX_SDK_STRING_LENGTH`).
 
+The bounds are pinned by `src/routes/budgets.test.ts`, which drives
+the real SDK client, the real page controller and the real viewer
+at the documented ceilings — including the upstream SDK's inventory
+ceilings of 16 groups, 256 roots and 16 allophones per root.
+
 ## 10. Cancellation and bounded processing (H0506)
 
 Every fetch the Hub initiates carries an `AbortSignal`:

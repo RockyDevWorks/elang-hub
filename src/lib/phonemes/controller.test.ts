@@ -654,4 +654,54 @@ describe('PhonemePageController client-side upload cap (H0503)', () => {
 		expect(controller.state.phase).toBe('error');
 		expect(request).not.toHaveBeenCalled();
 	});
+
+	it('does not emit a stale oversize error when the run is superseded during the abort', async () => {
+		// The generation counter exists so a superseded run cannot
+		// overwrite the state of a newer one. The oversize branch is
+		// the one place where the emit happens synchronously — between
+		// the generation bump and the emit there is no `await`, so the
+		// only way the run can become stale is a re-entrant state
+		// change triggered by the abort of the previous run. That is
+		// exactly what happens when the user cancels while the next
+		// selection is being processed.
+		const controller = new PhonemePageController();
+		const phases: string[] = [];
+		controller.subscribe((state) => phases.push(state.phase));
+
+		let transportEntered!: () => void;
+		const entered = new Promise<void>((resolve) => {
+			transportEntered = resolve;
+		});
+
+		const inFlight = controller.select(
+			makeFile('first.elang', new Uint8Array([1, 2, 3])) as unknown as File,
+			(_bytes, _fileName, signal) =>
+				new Promise<PhonemeRequestOutcome>((_resolve, reject) => {
+					transportEntered();
+					signal.addEventListener('abort', () => {
+						controller.reset();
+						reject(new DOMException('Aborted', 'AbortError'));
+					});
+				})
+		);
+
+		// Wait until the first run is actually in the transport, so the
+		// second selection is guaranteed to abort it.
+		await entered;
+
+		const oversize: MinimalFile = {
+			name: 'huge.elang',
+			size: 16 * 1024 * 1024 + 1,
+			stream: () => {
+				throw new Error('the oversize branch must never read the file');
+			}
+		};
+		const request = vi.fn(async () => viewOutcome(successView()));
+		await controller.select(oversize as unknown as File, request);
+		await inFlight;
+
+		expect(request).not.toHaveBeenCalled();
+		expect(phases).not.toContain('error');
+		expect(controller.state.phase).toBe('idle');
+	});
 });

@@ -578,4 +578,37 @@ describe('SdkClient hostile response handling (H0502)', () => {
 			expect(result.diagnostics[0]?.message).toBe('kept');
 		}
 	});
+
+	it('falls back to a generic message when a failure carries no message', async () => {
+		// A hostile or buggy service can return a failure without a
+		// `message` field. The failure must still be a complete,
+		// renderable `SdkFailure` — never `undefined` in a field the
+		// error mapper reads verbatim.
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({ ok: false, stage: 'validate', code: 'eld_invalid' })
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.message).toBe('Validation failed.');
+		}
+	});
+
+	it('falls back to a generic message when a failure message is not a string', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: false,
+				stage: 'validate',
+				code: 'eld_invalid',
+				message: { nested: true }
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.message).toBe('Validation failed.');
+		}
+	});
 });

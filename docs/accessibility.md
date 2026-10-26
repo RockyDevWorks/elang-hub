@@ -39,10 +39,12 @@ nested-condition tree.
 
 ### Rule coverage and exclusions
 
-| Rule                                         | axe coverage / reason for exclusion                                                              | Additional or alternative coverage                                                                  |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `color-contrast`                             | Needs layout and paint; happy-dom implements neither, so axe cannot compute a ratio.            | `contrast.test.ts` computes the ratios from the source CSS — see §5.                                |
-| `aria-allowed-attr`, `aria-valid-attr-value` | Included in the WCAG 2.1 A/AA axe checks.                                                        | Direct ARIA assertions in the keyboard/screen-reader suite provide additional coverage — see §4.     |
+Only `color-contrast` is excluded from the axe checks.
+
+| Rule                                         | axe coverage / reason for exclusion                                                  | Additional or alternative coverage                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `color-contrast`                             | Needs layout and paint; happy-dom implements neither, so axe cannot compute a ratio. | `contrast.test.ts` computes the ratios from the source CSS — see §5.                             |
+| `aria-allowed-attr`, `aria-valid-attr-value` | Included in the WCAG 2.1 A/AA axe checks.                                            | Direct ARIA assertions in the keyboard/screen-reader suite provide additional coverage — see §4. |
 
 ### The exclusion is not a blind spot
 

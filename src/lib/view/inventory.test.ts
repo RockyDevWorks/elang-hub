@@ -323,6 +323,38 @@ describe('narrowInventoryPayload — allophone rejection', () => {
 });
 
 describe('narrowInventoryPayload — condition tree rejection', () => {
+	it('rejects an empty when block', () => {
+		const p = validPayload();
+		p.inventory.groups[0].roots[0].when = { children: [] };
+		const r = narrowInventoryPayload(p);
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('condition_invalid');
+			expect(r.error.path).toBe('inventory.groups[0].roots[0].when.children');
+		}
+	});
+
+	it.each([0, 1])('rejects a group with %i children', (childCount) => {
+		const p = validPayload();
+		p.inventory.groups[0].roots[0].when = {
+			children: [
+				{
+					kind: 'group',
+					children: Array.from({ length: childCount }, () => ({
+						kind: 'predicate' as const,
+						predicate: { kind: 'word-position' as const, value: 'initial' as const }
+					}))
+				}
+			]
+		};
+		const r = narrowInventoryPayload(p);
+		expect(r.ok).toBe(false);
+		if (!r.ok) {
+			expect(r.error.code).toBe('condition_invalid');
+			expect(r.error.path).toBe('inventory.groups[0].roots[0].when.children[0].children');
+		}
+	});
+
 	it('accepts a single-predicate when on a root', () => {
 		const p = validPayload();
 		p.inventory.groups[0].roots[0].when = {

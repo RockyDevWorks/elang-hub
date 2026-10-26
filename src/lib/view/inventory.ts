@@ -384,12 +384,22 @@ function narrowCondition(value: unknown): NarrowResult<ConditionPayload> {
 	if (!Array.isArray(value.children)) {
 		return err('condition_invalid', '`when` block is missing a `children` array.');
 	}
-	const childrenResult = narrowConditionChildren(value.children);
+	const childrenResult = narrowConditionChildren(value.children, 1);
 	if (!childrenResult.ok) return childrenResult;
 	return ok({ children: childrenResult.value });
 }
 
-function narrowConditionChildren(value: unknown[]): NarrowResult<readonly ConditionPayloadNode[]> {
+function narrowConditionChildren(
+	value: unknown[],
+	minimum: 1 | 2
+): NarrowResult<readonly ConditionPayloadNode[]> {
+	if (value.length < minimum) {
+		return err(
+			'condition_invalid',
+			`Condition requires at least ${minimum} ${minimum === 1 ? 'child' : 'children'}.`,
+			'children'
+		);
+	}
 	const out: ConditionPayloadNode[] = [];
 	for (let i = 0; i < value.length; i++) {
 		const nodeResult = narrowConditionNode(value[i]);
@@ -410,7 +420,7 @@ function narrowConditionNode(value: unknown): NarrowResult<ConditionPayloadNode>
 			if (!Array.isArray(value.children)) {
 				return err('condition_invalid', '`group` node is missing its `children` array.');
 			}
-			const childrenResult = narrowConditionChildren(value.children);
+			const childrenResult = narrowConditionChildren(value.children, 2);
 			if (!childrenResult.ok) return childrenResult;
 			return ok({ kind: 'group', children: childrenResult.value });
 		}

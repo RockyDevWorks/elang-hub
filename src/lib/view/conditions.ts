@@ -102,13 +102,13 @@ export function renderPredicate(p: ConditionPredicate): string {
 
 /**
  * Build a `ConditionExpressionView` from a `ConditionPredicate`. The
- * view is frozen; the predicate it wraps is the same string the SDK
- * emitted (no transformation).
+ * view stores a frozen copy of the predicate, preserving the strings
+ * the SDK emitted (no transformation).
  */
 export function predicateView(p: ConditionPredicate): ConditionExpressionView {
 	return Object.freeze({
 		kind: 'predicate' as const,
-		predicate: p,
+		predicate: Object.freeze({ ...p }),
 		displayText: bounded(renderPredicate(p))
 	});
 }

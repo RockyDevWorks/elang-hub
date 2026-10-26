@@ -100,7 +100,9 @@ export function extractPhonemeView(result: SdkValidateResult): PhonemeViewResult
 			package: packageView,
 			phonemeResourcePath: result.phonemeResourcePath,
 			inventory: inventoryView,
-			diagnostics: Object.freeze([...result.diagnostics])
+			diagnostics: Object.freeze(
+				result.diagnostics.map((diagnostic) => Object.freeze({ ...diagnostic }))
+			)
 		})
 	};
 }

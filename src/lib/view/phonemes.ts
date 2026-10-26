@@ -116,7 +116,7 @@ export function buildPhonemeInventoryView(body: InventoryBodyPayload): PhonemeIn
 
 function buildGroupView(payload: GroupPayload): GroupView {
 	const kind: GroupKind =
-		typeof payload.kind === 'string' ? payload.kind : { name: payload.kind.name };
+		typeof payload.kind === 'string' ? payload.kind : Object.freeze({ name: payload.kind.name });
 	const displayName = typeof payload.kind === 'string' ? payload.kind : payload.kind.name;
 	const roots = [...payload.roots]
 		.map((r) => buildRootView(r))

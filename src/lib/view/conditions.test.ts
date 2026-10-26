@@ -43,12 +43,16 @@ describe('renderPredicate', () => {
 
 describe('predicateView', () => {
 	it('builds a frozen predicate view with display text', () => {
-		const v = predicateView({ kind: 'word-position', value: 'initial' });
+		const predicate = { kind: 'word-position' as const, value: 'initial' as const };
+		const v = predicateView(predicate);
 		expect(v.kind).toBe('predicate');
 		if (v.kind === 'predicate') {
 			expect(v.predicate).toEqual({ kind: 'word-position', value: 'initial' });
+			expect(v.predicate).not.toBe(predicate);
+			expect(Object.isFrozen(v.predicate)).toBe(true);
 			expect(v.displayText).toBe('word-position: initial');
 		}
+		expect(Object.isFrozen(predicate)).toBe(false);
 		expect(Object.isFrozen(v)).toBe(true);
 	});
 });

@@ -510,21 +510,34 @@ describe('extractPhonemeView — view model fidelity', () => {
 	});
 
 	it('view is deeply frozen (read-only invariant)', () => {
+		const diagnostic: SdkDiagnostic = {
+			stage: 'validate',
+			code: 'eld_invalid',
+			message: 'advisory'
+		};
 		const result = extractPhonemeView(
 			validateResult(
 				inventoryPayload({}, [
 					{
-						kind: 'consonants',
+						kind: { name: 'stops' },
 						roots: [
 							{
 								ipa: 't',
 								roman: 't',
-								when: null,
+								when: {
+									children: [
+										{
+											kind: 'predicate',
+											predicate: { kind: 'word-position', value: 'initial' }
+										}
+									]
+								},
 								allophones: [{ ipa: 'ɾ', roman: null, when: null }]
 							}
 						]
 					}
-				])
+				]),
+				{ diagnostics: [diagnostic] }
 			)
 		);
 		expect(result.ok).toBe(true);
@@ -535,10 +548,24 @@ describe('extractPhonemeView — view model fidelity', () => {
 		expect(Object.isFrozen(result.view.inventory.groups)).toBe(true);
 		const group = result.view.inventory.groups[0];
 		expect(Object.isFrozen(group)).toBe(true);
+		expect(Object.isFrozen(group.kind)).toBe(true);
 		expect(Object.isFrozen(group.roots)).toBe(true);
 		const r = group.roots[0];
 		expect(Object.isFrozen(r)).toBe(true);
 		expect(Object.isFrozen(r.allophones)).toBe(true);
 		expect(Object.isFrozen(r.allophones[0])).toBe(true);
+		expect(Object.isFrozen(r.allophones[0].romanKind)).toBe(true);
+		expect(Object.isFrozen(r.when)).toBe(true);
+		expect(Object.isFrozen(r.when?.children)).toBe(true);
+		const condition = r.when?.children[0];
+		expect(condition?.kind).toBe('predicate');
+		if (condition?.kind === 'predicate') {
+			expect(Object.isFrozen(condition)).toBe(true);
+			expect(Object.isFrozen(condition.predicate)).toBe(true);
+		}
+		expect(Object.isFrozen(result.view.diagnostics)).toBe(true);
+		expect(Object.isFrozen(result.view.diagnostics[0])).toBe(true);
+		expect(result.view.diagnostics[0]).not.toBe(diagnostic);
+		expect(Object.isFrozen(diagnostic)).toBe(false);
 	});
 });

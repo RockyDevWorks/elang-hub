@@ -39,9 +39,9 @@ export type AllophoneRoman =
  * allophone has no roman field?".
  */
 export function classifyAllophoneRoman(roman: string | null): AllophoneRoman {
-	if (roman === null) return { kind: 'inherited' };
-	if (roman === '') return { kind: 'absent' };
-	return { kind: 'explicit', text: roman };
+	if (roman === null) return Object.freeze({ kind: 'inherited' });
+	if (roman === '') return Object.freeze({ kind: 'absent' });
+	return Object.freeze({ kind: 'explicit', text: roman });
 }
 
 /**

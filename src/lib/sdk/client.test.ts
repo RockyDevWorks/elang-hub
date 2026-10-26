@@ -16,7 +16,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SdkClient, toHubError } from './client';
 import { SUPPORTED_BINARY_CONTAINER_VERSION, SUPPORTED_SPEC_VERSION } from './contract';
-import { MAX_SDK_BODY_BYTES, MAX_SDK_RESPONSE_BYTES } from './bounds';
+import {
+	MAX_SDK_BODY_BYTES,
+	MAX_SDK_DIAGNOSTICS,
+	MAX_SDK_RESPONSE_BYTES,
+	MAX_SDK_STRING_LENGTH
+} from './bounds';
 
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
@@ -435,5 +440,142 @@ describe('SdkClient response byte limit', () => {
 			stage: 'inspect',
 			code: 'malformed_response'
 		});
+	});
+});
+
+describe('SdkClient hostile response handling (H0502)', () => {
+	it('clamps an oversized phonemeResourcePath instead of rendering it whole', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: true,
+				specVersion: SUPPORTED_SPEC_VERSION,
+				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				phonemeResourcePath: 'x'.repeat(MAX_SDK_STRING_LENGTH * 4),
+				inventory: { phonemes: [] },
+				diagnostics: []
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(true);
+		if (result.ok && result.mode === 'validate') {
+			expect(result.phonemeResourcePath).toHaveLength(MAX_SDK_STRING_LENGTH + 1);
+			expect(result.phonemeResourcePath.endsWith('…')).toBe(true);
+		}
+	});
+
+	it('clamps an oversized failure message and path', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: false,
+				stage: 'validate',
+				code: 'eld_invalid',
+				message: 'm'.repeat(MAX_SDK_STRING_LENGTH * 4),
+				path: 'p'.repeat(MAX_SDK_STRING_LENGTH * 4)
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.message).toHaveLength(MAX_SDK_STRING_LENGTH + 1);
+			expect(result.path).toHaveLength(MAX_SDK_STRING_LENGTH + 1);
+		}
+	});
+
+	it('caps the number of retained diagnostics', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: true,
+				specVersion: SUPPORTED_SPEC_VERSION,
+				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				discoveredResources: 1,
+				diagnostics: Array.from({ length: MAX_SDK_DIAGNOSTICS + 50 }, (_, i) => ({
+					stage: 'validate',
+					code: 'eld_invalid',
+					message: `diagnostic ${i}`
+				}))
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.inspect(new Uint8Array(10));
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.diagnostics).toHaveLength(MAX_SDK_DIAGNOSTICS);
+		}
+	});
+
+	it('clamps an oversized diagnostic message and path', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: true,
+				specVersion: SUPPORTED_SPEC_VERSION,
+				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				discoveredResources: 1,
+				diagnostics: [
+					{
+						stage: 'validate',
+						code: 'eld_invalid',
+						message: 'd'.repeat(MAX_SDK_STRING_LENGTH * 4),
+						path: 'q'.repeat(MAX_SDK_STRING_LENGTH * 4)
+					}
+				]
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.inspect(new Uint8Array(10));
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			const diagnostic = result.diagnostics[0];
+			expect(diagnostic?.message).toHaveLength(MAX_SDK_STRING_LENGTH + 1);
+			expect(diagnostic?.path).toHaveLength(MAX_SDK_STRING_LENGTH + 1);
+		}
+	});
+
+	it('keeps HTML/script-like diagnostic content as inert text', async () => {
+		// The SDK response is package-controlled. The Hub must carry
+		// the string through verbatim (escaping happens at the
+		// template layer) — but it must not treat it as markup, and
+		// it must not drop the diagnostic for containing angle
+		// brackets. The rendering guarantee is covered by the
+		// component tests; this test pins the boundary behaviour.
+		const hostile = '<script>alert(1)</script><img src=x onerror=alert(2)>';
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: true,
+				specVersion: SUPPORTED_SPEC_VERSION,
+				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				discoveredResources: 1,
+				diagnostics: [{ stage: 'validate', code: 'eld_invalid', message: hostile }]
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.inspect(new Uint8Array(10));
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.diagnostics[0]?.message).toBe(hostile);
+		}
+	});
+
+	it('drops a diagnostic whose message is not a string', async () => {
+		const fetchImpl = vi.fn(async () =>
+			jsonResponse({
+				ok: true,
+				specVersion: SUPPORTED_SPEC_VERSION,
+				binaryContainerVersion: SUPPORTED_BINARY_CONTAINER_VERSION,
+				discoveredResources: 1,
+				diagnostics: [
+					{ stage: 'validate', code: 'eld_invalid', message: { nested: true } },
+					{ stage: 'validate', code: 'eld_invalid', message: 'kept' }
+				]
+			})
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.inspect(new Uint8Array(10));
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.diagnostics).toHaveLength(1);
+			expect(result.diagnostics[0]?.message).toBe('kept');
+		}
 	});
 });

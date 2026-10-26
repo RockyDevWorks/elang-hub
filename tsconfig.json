@@ -1,5 +1,15 @@
 {
 	"extends": "$app/tsconfig",
+	"include": [
+		"src/**/*",
+		"test/**/*",
+		"tests/**/*",
+		"*.config.js",
+		"*.config.ts",
+		"vitest.setup.ts",
+		".svelte-kit/**/*.d.ts"
+	],
+	"exclude": ["node_modules", "build", "dist", "coverage"],
 	"compilerOptions": {
 		"allowJs": true,
 		"checkJs": true,

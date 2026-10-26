@@ -1,24 +1,35 @@
+import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 /**
  * Vitest configuration.
  *
- * Unit tests for the SDK adapter (`src/lib/sdk/*.test.ts`) run in
- * the default `node` environment — no DOM, no browser globals — so
- * the adapter contract can be exercised with a stub `fetch`.
+ * Unit tests for the SDK adapter (`src/lib/sdk/*.test.ts`) and the
+ * page-level tests (`src/routes/page.test.ts`, `src/routes/api/**`)
+ * run in the default `node` environment — no DOM, no browser
+ * globals — so the adapter contract can be exercised with a stub
+ * `fetch` and the page state machine can be wired without a
+ * browser.
  *
- * Coverage is enabled via `npm run coverage` (not the default
- * `npm test`) so day-to-day test runs stay fast. The provider is
- * V8 — the same runtime that ships with Node — which avoids the
- * `istanbul` Babel dependency tree. Test files are excluded; only
- * `src/lib/**` (and future `src/routes/**`) are measured.
+ * The `$lib` alias is sourced from SvelteKit's generated
+ * `.svelte-kit/tsconfig.json` so tests and source share the same
+ * module resolution. Coverage is enabled via `npm run coverage`
+ * (not the default `npm test`) so day-to-day test runs stay fast.
+ * The provider is V8 — the same runtime that ships with Node —
+ * which avoids the `istanbul` Babel dependency tree. Test files
+ * are excluded; only `src/lib/**` is measured.
  */
 export default defineConfig({
+	plugins: [sveltekit()],
+	resolve: {
+		alias: {
+			$lib: path.resolve('./src/lib')
+		}
+	},
 	test: {
 		include: ['src/**/*.{test,spec}.ts'],
 		environment: 'node',
-		// The Hub builds for the Cloudflare adapter; Vitest's default
-		// to Vite's resolve order keeps `vite` out of the test path.
 		exclude: ['node_modules', '.svelte-kit', 'build', 'dist'],
 		coverage: {
 			provider: 'v8',

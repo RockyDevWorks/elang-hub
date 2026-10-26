@@ -152,16 +152,9 @@ export class PhonemePageController {
 				return;
 			}
 			if (generation === this.#generation) {
-				this.#emit({
-					phase: 'error',
-					fileName,
-					fileSize,
-					error: {
-						title: 'Could not read the file',
-						message:
-							'The file could not be read from your device. ' + 'Please try a different file.'
-					},
-					replace: () => this.reset()
+				this.#emitError(fileName, fileSize, {
+					title: 'Could not read the file',
+					message: 'The file could not be read from your device. ' + 'Please try a different file.'
 				});
 			}
 			return;
@@ -174,16 +167,10 @@ export class PhonemePageController {
 			});
 		} catch {
 			if (generation === this.#generation) {
-				this.#emit({
-					phase: 'error',
-					fileName,
-					fileSize,
-					error: {
-						title: 'Unexpected failure',
-						message:
-							'Something went wrong while validating the package. ' + 'Please try a different file.'
-					},
-					replace: () => this.reset()
+				this.#emitError(fileName, fileSize, {
+					title: 'Unexpected failure',
+					message:
+						'Something went wrong while validating the package. ' + 'Please try a different file.'
 				});
 			}
 			return;
@@ -198,37 +185,54 @@ export class PhonemePageController {
 		}
 
 		if (outcome.kind === 'view' && outcome.result.ok) {
-			this.#emit({
-				phase: 'view',
-				fileName,
-				fileSize,
-				view: outcome.result,
-				replace: () => this.reset()
-			});
+			this.#emitView(fileName, fileSize, outcome.result);
 			return;
 		}
 
-		this.#emit({
-			phase: 'error',
-			fileName,
-			fileSize,
-			error: mapRequestOutcome(outcome),
-			replace: () => this.reset()
-		});
+		this.#emitError(fileName, fileSize, mapRequestOutcome(outcome));
 	}
 
 	/** Cancel the in-flight run. No-op when idle. */
 	cancel(): void {
+		this.#abortToIdle();
+	}
+
+	/** Return to `idle`. No-op when already idle. */
+	reset(): void {
+		this.#abortToIdle();
+	}
+
+	/** Abort any in-flight run, bump the generation, and emit IDLE. */
+	#abortToIdle(): void {
 		this.#abortController?.abort();
 		this.#generation++;
 		this.#emit(IDLE_STATE);
 	}
 
-	/** Return to `idle`. No-op when already idle. */
-	reset(): void {
-		this.#abortController?.abort();
-		this.#generation++;
-		this.#emit(IDLE_STATE);
+	/** Emit the `error` phase with a fresh `replace` callback bound to this controller. */
+	#emitError(fileName: string, fileSize: number, error: PhonemePageErrorInfo): void {
+		this.#emit({
+			phase: 'error',
+			fileName,
+			fileSize,
+			error,
+			replace: () => this.reset()
+		});
+	}
+
+	/** Emit the `view` phase with a fresh `replace` callback bound to this controller. */
+	#emitView(
+		fileName: string,
+		fileSize: number,
+		view: Extract<PhonemeViewResult, { ok: true }>
+	): void {
+		this.#emit({
+			phase: 'view',
+			fileName,
+			fileSize,
+			view,
+			replace: () => this.reset()
+		});
 	}
 
 	#emit(next: PhonemePageState): void {

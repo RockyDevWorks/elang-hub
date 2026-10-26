@@ -167,11 +167,6 @@ export class PhonemePageController {
 			return;
 		}
 
-		if (controller.signal.aborted) {
-			if (generation === this.#generation) this.#emit(IDLE_STATE);
-			return;
-		}
-
 		let outcome: PhonemeRequestOutcome;
 		try {
 			outcome = await request(bytes, fileName, controller.signal, () => {

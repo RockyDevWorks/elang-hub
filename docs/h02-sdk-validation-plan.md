@@ -43,8 +43,25 @@ For H02, the Hub-side deliverable is:
 
 - `npm run check` — 0 errors
 - `npm run lint` — clean
-- `npm run test` — all pass
+- `npm test` — all pass (fast feedback loop, no coverage)
+- `npm run coverage` — full V8 coverage report; consumed by CI
 - `npm run build` — Cloudflare adapter succeeds
+- Codecov (CI) — uploads `coverage/lcov.info` to
+  https://app.codecov.io/github/rockydevworks/elang-hub; currently
+  no enforcement gate (v0.1.0 is informational only)
+
+## CI
+
+The CI test job is named `Test (Vitest) + Codecov` and runs:
+
+1. `npm ci` — clean install
+2. `svelte-kit sync` — materialise the SvelteKit tsconfig
+3. `npm run coverage` — vitest with V8 coverage
+4. `codecov-action@v5` — upload `coverage/lcov.info`
+
+Codecov upload is best-effort (`continue-on-error: true`). On
+protected branches Codecov may require a `CODECOV_TOKEN` repo
+secret — the action is already wired to pass it when present.
 
 ## Out of scope (deferred to other phases)
 

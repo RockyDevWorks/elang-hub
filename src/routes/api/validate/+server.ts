@@ -1,16 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { MAX_FILE_BYTES } from '$lib/upload/limits';
-import { env } from '$env/dynamic/private';
-
-/**
- * The validation service.
- *
- * v0.1.0 keeps the service stateless: it validates the package and
- * returns a verdict, and retains nothing (REQ-HUB-003). The endpoint
- * is configured per deployment; without it the route reports that
- * validation is unavailable rather than pretending to validate.
- */
-const VALIDATION_SERVICE_URL = env.VALIDATION_SERVICE_URL;
+import { VALIDATION_SERVICE_URL } from '$app/env/private';
 
 /**
  * Maximum time to wait for the upstream validation service.

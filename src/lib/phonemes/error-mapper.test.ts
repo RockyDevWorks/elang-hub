@@ -114,15 +114,20 @@ describe('error-mapper / mapRequestOutcome', () => {
 	});
 
 	it('includes the SDK detail path when present, HTML-escaped', () => {
+		// The detail string exercises every HTML-escape branch:
+		// `&`, `<`, `>`, `"`, and `'` (single quote → `&#39;`).
+		// The string `inventory<'"&>.groups[0]` contains all five
+		// special characters so the test pins the entire escape
+		// switch.
 		const outcome = sdkErrorOutcome(
 			hubError({
 				stage: 'validate',
 				code: 'phoneme_inventory_invalid',
-				detail: 'inventory<"&>.groups[0]'
+				detail: 'inventory<\'"&>.groups[0]'
 			})
 		);
 		const info = mapRequestOutcome(outcome);
-		expect(info.detail).toBe('inventory&lt;&quot;&amp;&gt;.groups[0]');
+		expect(info.detail).toBe('inventory&lt;&#39;&quot;&amp;&gt;.groups[0]');
 	});
 
 	it('strips control characters from the detail path', () => {

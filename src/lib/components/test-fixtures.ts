@@ -122,19 +122,31 @@ export function fixtureGroupWhen(): WhenView {
 }
 
 /**
- * A `when` block with two leaf predicates (no `group`/`or`
- * wrapper). Used to exercise the rich rendering path: with > 1
- * child, the component renders one <li> per predicate with the
- * `span.predicate` markup.
+ * A `when` block with two leaf predicates of different kinds. The
+ * left child uses `previous-phoneme` (a phoneme-targeted predicate
+ * rendered with `lang="und-fonipa"`); the right child uses
+ * `word-position` (a value-targeted predicate). The mix exercises
+ * BOTH branches of the predicate-kind discriminator in
+ * ConditionTree.svelte so neither is left uncovered.
  */
 export function fixtureMultiPredicateWhen(): WhenView {
 	const left: ConditionExpressionView = predicateView({
-		kind: 'word-position',
-		value: 'initial'
+		kind: 'previous-phoneme',
+		ipa: 's'
+	});
+	const middle: ConditionExpressionView = predicateView({
+		kind: 'next-phoneme',
+		ipa: 't'
 	});
 	const right: ConditionExpressionView = predicateView({
 		kind: 'word-position',
 		value: 'final'
 	});
-	return whenView([left, right]);
+	// Three predicates: previous-phoneme, next-phoneme, and
+	// word-position. Together they exercise BOTH operands of the
+	// `kind === 'previous-phoneme' || kind === 'next-phoneme'`
+	// discriminator: left short-circuits on the first operand,
+	// middle satisfies the second operand, right is the fallback
+	// value-target branch.
+	return whenView([left, middle, right]);
 }

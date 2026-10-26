@@ -431,6 +431,24 @@ describe('PhonemePageController', () => {
 		expect(controller.state.error.title).toMatch(/unexpected/i);
 	});
 
+	it('replace() on a request-throw error state returns to idle', async () => {
+		// The request-catch branch in `select()` emits an error
+		// state whose `replace` callback is a closure over
+		// `this.reset()`. Invoking it must drop the page back to
+		// the idle phase. This is the same contract as the
+		// read-failure path, but a distinct code branch — the
+		// callback lives in the request-catch, not the read-catch.
+		const controller = new PhonemePageController();
+		const file = makeFile('throw.elang', new Uint8Array([1]));
+		const throwing: RequestPhonemeView = async () => {
+			throw new Error('boom');
+		};
+		await controller.select(file as unknown as File, throwing);
+		expect(controller.state.phase).toBe('error');
+		(controller.state as PhonemePageError).replace();
+		expect(controller.state.phase).toBe('idle');
+	});
+
 	it('unsubscribe stops receiving transitions', async () => {
 		const controller = new PhonemePageController();
 		const local: unknown[] = [];
@@ -538,5 +556,111 @@ describe('PhonemePageController', () => {
 		// pipeline before the request ran.
 		expect(cancelled).toBe(true);
 		expect(controller.state.phase).toBe('idle');
+	});
+
+	it('a cancel issued synchronously on the validating emit aborts the read at entry', async () => {
+		// `select()` emits the `validating` state SYNCHRONOUSLY
+		// before awaiting the read. If a subscriber calls
+		// `controller.cancel()` during that emit (progress === 0),
+		// the AbortController is signalled BEFORE
+		// `readFileWithProgress` is invoked. The read then throws
+		// an AbortError on its first line, the catch sees
+		// `signal.aborted === true` with a matching generation,
+		// and the controller emits the idle state.
+		//
+		// This pins:
+		//   - controller.ts:254 — `if (signal.aborted) throw`
+		//     (true branch, the only way to enter read-fail with
+		//     an aborted signal from a fresh AbortController)
+		//   - controller.ts:151 — read-catch with aborted signal
+		//     and a matching generation (true branch: emit IDLE)
+		const controller = new PhonemePageController();
+		const file = makeFile('sync-cancel.elang', new Uint8Array([1]));
+		let cancelCalled = false;
+		controller.subscribe((s) => {
+			if (s.phase === 'validating' && s.progress === 0 && !cancelCalled) {
+				cancelCalled = true;
+				controller.cancel();
+			}
+		});
+		const { request } = makeRequest(async () => viewOutcome(successView()));
+		await controller.select(file as unknown as File, request);
+		expect(cancelCalled).toBe(true);
+		expect(controller.state.phase).toBe('idle');
+	});
+
+	it('a slow first run superseded by a faster second run discards stale progress', async () => {
+		// Two concurrent `select()` calls. The first runs against
+		// a 64 KiB file (multi-chunk read in happy-dom); the
+		// second runs against a small file (single chunk,
+		// resolves quickly). The first select's `onProgress`
+		// callback may fire AFTER the second select bumps the
+		// generation. The controller detects the mismatch and
+		// returns early — pinning the
+		// `if (generation !== this.#generation) return;`
+		// truthy branch at line 144.
+		//
+		// The exact chunking is happy-dom-internal; the test only
+		// requires that progress is reported at least once for
+		// the first select BEFORE its read finishes.
+		const controller = new PhonemePageController();
+		// 64 KiB — happy-dom returns this in many small chunks.
+		const big = new Uint8Array(64 * 1024).fill(0x61);
+		const small = new Uint8Array(16).fill(0x62);
+		const fileA = makeFile('big.elang', big);
+		const fileB = makeFile('small.elang', small);
+
+		let firstProgressSeen = 0;
+		controller.subscribe((s) => {
+			if (s.phase === 'validating' && s.fileName === 'big.elang') {
+				firstProgressSeen++;
+			}
+		});
+
+		const firstPromise = controller.select(fileA as unknown as File, async () =>
+			viewOutcome(successView())
+		);
+
+		// Yield once so the first select's read starts and
+		// emits at least one progress event before the supersede.
+		await new Promise((resolve) => setImmediate(resolve));
+
+		const { request: fastRequest } = makeRequest(async () => viewOutcome(successView()));
+		await controller.select(fileB as unknown as File, fastRequest);
+
+		// Wait for the first select to fully resolve (its
+		// pipeline is now superseded; it should NOT emit
+		// anything that overwrites the second select's state).
+		await firstPromise;
+
+		// The first select emitted at least one validating state
+		// before the supersede (the test framework would have
+		// fired the subscription at least once).
+		expect(firstProgressSeen).toBeGreaterThanOrEqual(1);
+		// The controller's final state reflects the second
+		// select's success.
+		expect(controller.state.phase).toBe('view');
+		if (controller.state.phase !== 'view') throw new Error('unreachable');
+		expect(controller.state.fileName).toBe('small.elang');
+	});
+
+	it('an empty file (size 0) short-circuits the read to an empty ArrayBuffer', async () => {
+		// `readFileWithProgress` has an explicit `if (totalBytes
+		// === 0) return new ArrayBuffer(0);` guard. Only a
+		// zero-byte file reaches it, so this test pins that
+		// branch. The SDK outcome is irrelevant here — the point
+		// is that the controller does not stall in `validating`
+		// and the request is still invoked with zero bytes.
+		const controller = new PhonemePageController();
+		const emptyFile = makeFile('empty.elang', new Uint8Array(0));
+		let receivedBytes: ArrayBuffer | null = null;
+		const { request } = makeRequest(async (bytes) => {
+			receivedBytes = bytes;
+			return viewOutcome(successView());
+		});
+		await controller.select(emptyFile as unknown as File, request);
+		expect(receivedBytes).not.toBeNull();
+		expect((receivedBytes as unknown as ArrayBuffer).byteLength).toBe(0);
+		expect(controller.state.phase).toBe('view');
 	});
 });

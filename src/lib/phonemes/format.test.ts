@@ -51,6 +51,17 @@ describe('format / labelForCustomGroup', () => {
 	it('preserves ASCII case (no Unicode transform)', () => {
 		expect(labelForCustomGroup('a-b-c')).toBe('A B C');
 	});
+
+	it('returns empty pieces for leading/trailing/double dashes (defensive)', () => {
+		// The SDK validates slug shape upstream; this test pins
+		// the formatter's defensive behaviour for malformed
+		// inputs that the controller may still see (e.g. a future
+		// SDK release). The `piece.length === 0` ternary inside
+		// `.map` is the branch being exercised.
+		expect(labelForCustomGroup('-leading')).toBe(' Leading');
+		expect(labelForCustomGroup('trailing-')).toBe('Trailing ');
+		expect(labelForCustomGroup('double--dash')).toBe('Double  Dash');
+	});
 });
 
 describe('format / labelForGroupKind', () => {

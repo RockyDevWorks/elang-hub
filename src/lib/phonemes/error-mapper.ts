@@ -173,6 +173,19 @@ function bound(value: string, max: number): string {
 }
 
 /**
+ * Map of characters the regex matches to their HTML entity
+ * replacements. Used by `escape` below; kept module-level so the
+ * object is allocated once.
+ */
+const HTML_ESCAPE_MAP: Readonly<Record<'&' | '<' | '>' | '"' | "'", string>> = Object.freeze({
+	'&': '&amp;',
+	'<': '&lt;',
+	'>': '&gt;',
+	'"': '&quot;',
+	"'": '&#39;'
+});
+
+/**
  * Escape a value for safe interpolation. Used only for the
  * optional `detail` fields; `message` is already escaped by the
  * upstream SDK contract. The escape is defence-in-depth — the
@@ -183,22 +196,7 @@ function bound(value: string, max: number): string {
 function escape(value: string): string {
 	return (
 		value
-			.replace(/[&<>"']/g, (ch) => {
-				switch (ch) {
-					case '&':
-						return '&amp;';
-					case '<':
-						return '&lt;';
-					case '>':
-						return '&gt;';
-					case '"':
-						return '&quot;';
-					case "'":
-						return '&#39;';
-					default:
-						return ch;
-				}
-			})
+			.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch as '&' | '<' | '>' | '"' | "'"])
 			// eslint-disable-next-line no-control-regex -- defence-in-depth against hostile SDK content; this range is exactly the C0 controls + DEL.
 			.replace(/[\u0000-\u001f\u007f]/g, '')
 	);

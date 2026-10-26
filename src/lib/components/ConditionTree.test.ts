@@ -66,14 +66,19 @@ describe('ConditionTree', () => {
 	it('renders the rich child list when the when block has multiple predicate children', () => {
 		// With > 1 child, the component renders one <li> per child
 		// with the `span.predicate` markup (not just the summary).
+		// The fixture mixes a phoneme-targeted predicate
+		// (`previous-phoneme`) with a value-targeted predicate
+		// (`word-position`); together they pin BOTH branches of
+		// the predicate-kind discriminator.
 		const { container } = render(ConditionTree, {
 			props: { when: fixtureMultiPredicateWhen() }
 		});
 		const items = container.querySelectorAll('li');
-		expect(items.length).toBe(2);
+		expect(items.length).toBe(3);
 		const predicates = container.querySelectorAll('span.predicate');
-		expect(predicates.length).toBe(2);
-		expect(container.textContent).toContain('word-position: initial');
+		expect(predicates.length).toBe(3);
+		expect(container.textContent).toContain('previous-phoneme: s');
+		expect(container.textContent).toContain('next-phoneme: t');
 		expect(container.textContent).toContain('word-position: final');
 	});
 

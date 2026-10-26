@@ -68,7 +68,10 @@
 		padding: 0.5rem 1rem;
 		background: white;
 		color: rgb(17 24 39);
-		border: 1px solid rgb(209 213 219);
+		/* A secondary button's border is the only visual cue that
+		 * the surface is a control, so it must meet WCAG 1.4.11's
+		 * 3:1 minimum (this is 4.83:1 on white). */
+		border: 1px solid rgb(107 114 128);
 		border-radius: 0.375rem;
 		font-weight: 500;
 		cursor: pointer;

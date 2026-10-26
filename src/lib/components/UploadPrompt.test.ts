@@ -13,12 +13,21 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import UploadPrompt from './UploadPrompt.svelte';
 import { UPLOAD_DROP_ZONE_LABEL, UPLOAD_PICKER_LABEL } from '$lib/phonemes';
+import { ACCEPT_ATTRIBUTE } from '$lib/upload/limits';
 
 describe('UploadPrompt', () => {
 	it('renders the drop zone with the canonical aria-label', () => {
 		const { getByRole } = render(UploadPrompt, { props: { onfiles: () => {} } });
 		const dropZone = getByRole('region');
 		expect(dropZone.getAttribute('aria-label')).toBe(UPLOAD_DROP_ZONE_LABEL);
+	});
+
+	it('restricts the file picker to the .elang accept attribute (H0503)', () => {
+		const { container } = render(UploadPrompt, { props: { onfiles: () => {} } });
+		const input = container.querySelector('input[type="file"]');
+		expect(input).not.toBeNull();
+		expect(input?.getAttribute('accept')).toBe(ACCEPT_ATTRIBUTE);
+		expect(ACCEPT_ATTRIBUTE).toContain('.elang');
 	});
 
 	it('renders the picker button with the canonical accessible name', () => {

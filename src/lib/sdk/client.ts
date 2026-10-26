@@ -33,9 +33,13 @@ import {
 } from './contract';
 import {
 	assertBodyWithinLimit,
+	clampSdkString,
 	composeAbortSignal,
 	DEFAULT_SDK_TIMEOUT_MS,
-	MAX_SDK_RESPONSE_BYTES
+	MAX_SDK_DIAGNOSTICS,
+	MAX_SDK_RESPONSE_BYTES,
+	MAX_SDK_STRING_LENGTH,
+	stripTrailingSlashes
 } from './bounds';
 
 /** Configuration for the SDK HTTP client. */
@@ -59,7 +63,7 @@ export class SdkClient {
 	readonly #fetch: typeof fetch;
 
 	constructor(config: SdkClientConfig) {
-		this.#serviceUrl = config.serviceUrl.replace(/\/+$/, '');
+		this.#serviceUrl = stripTrailingSlashes(config.serviceUrl);
 		this.#timeoutMs = config.timeoutMs ?? DEFAULT_SDK_TIMEOUT_MS;
 		this.#fetch = config.fetchImpl ?? fetch.bind(globalThis);
 	}
@@ -346,11 +350,15 @@ function parseVerify(json: Record<string, unknown>): SdkVerifyResult | SdkFailur
 function parseValidate(json: Record<string, unknown>): SdkValidateResult | SdkFailure {
 	const specVersion = json.specVersion;
 	const containerVersion = json.binaryContainerVersion;
-	const phonemeResourcePath = json.phonemeResourcePath;
+	const rawResourcePath = json.phonemeResourcePath;
+	const phonemeResourcePath =
+		typeof rawResourcePath === 'string'
+			? clampSdkString(rawResourcePath, MAX_SDK_STRING_LENGTH)
+			: undefined;
 	if (
 		typeof specVersion !== 'string' ||
 		typeof containerVersion !== 'string' ||
-		typeof phonemeResourcePath !== 'string' ||
+		phonemeResourcePath === undefined ||
 		phonemeResourcePath.length === 0
 	) {
 		return {
@@ -379,8 +387,10 @@ function parseValidate(json: Record<string, unknown>): SdkValidateResult | SdkFa
 
 function parseFailure(json: Record<string, unknown>, fallbackStage: ValidationStage): SdkFailure {
 	const code = asSdkErrorCode(json.code);
-	const message = typeof json.message === 'string' ? json.message : 'Validation failed.';
-	const path = typeof json.path === 'string' ? json.path : undefined;
+	const message = clampSdkString(json.message, MAX_SDK_STRING_LENGTH) ?? 'Validation failed.';
+	const rawPath = json.path;
+	const path =
+		typeof rawPath === 'string' ? clampSdkString(rawPath, MAX_SDK_STRING_LENGTH) : undefined;
 	// Trust the SDK's reported stage when it is one of the known
 	// values — the service ran inspect+verify internally before
 	// validate, and a failure during that pipeline is correctly
@@ -402,22 +412,41 @@ function parseFailure(json: Record<string, unknown>, fallbackStage: ValidationSt
 	};
 }
 
+/**
+ * Narrow the diagnostics array from an SDK response.
+ *
+ * Two independent bounds apply:
+ *
+ *   - the array length is capped at `MAX_SDK_DIAGNOSTICS`, because
+ *     every entry is rendered as a list item and an unbounded array
+ *     is an unbounded DOM tree;
+ *   - each `message` and `path` string is clamped to
+ *     `MAX_SDK_STRING_LENGTH`, because both are package-controlled.
+ *
+ * Entries that do not match the diagnostic shape are dropped, not
+ * rendered as "something went wrong" placeholders — a malformed
+ * diagnostic carries no information the user can act on.
+ */
 function parseDiagnostics(value: unknown): readonly SdkDiagnostic[] {
 	if (!Array.isArray(value)) return [];
 	const out: SdkDiagnostic[] = [];
-	for (const d of value) {
+	const limit = Math.min(value.length, MAX_SDK_DIAGNOSTICS);
+	for (let i = 0; i < limit; i++) {
+		const d = value[i];
 		if (!isRecord(d)) continue;
 		const stage = d.stage;
 		const code = d.code;
-		const message = d.message;
+		const message = clampSdkString(d.message, MAX_SDK_STRING_LENGTH);
 		if (
 			(stage !== 'inspect' && stage !== 'verify' && stage !== 'validate') ||
 			typeof code !== 'string' ||
-			typeof message !== 'string'
+			message === undefined
 		) {
 			continue;
 		}
-		const path = typeof d.path === 'string' ? d.path : undefined;
+		const rawPath = d.path;
+		const path =
+			typeof rawPath === 'string' ? clampSdkString(rawPath, MAX_SDK_STRING_LENGTH) : undefined;
 		const diagnostic: SdkDiagnostic =
 			path !== undefined
 				? { stage, code: asSdkErrorCode(code), message, path }

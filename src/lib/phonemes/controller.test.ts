@@ -17,7 +17,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { PhonemePageController } from './controller';
-import type { PhonemePageError, PhonemePageView } from './controller';
+import type { PhonemePageError, PhonemePageState, PhonemePageView } from './controller';
 import type { PhonemeRequestOutcome, RequestPhonemeView } from './index';
 import { httpErrorOutcome, sdkErrorOutcome, transportErrorOutcome, viewOutcome } from './index';
 import type { PhonemeViewResult } from '../view';
@@ -592,5 +592,145 @@ describe('PhonemePageController', () => {
 		expect(receivedBytes).not.toBeNull();
 		expect((receivedBytes as unknown as ArrayBuffer).byteLength).toBe(0);
 		expect(controller.state.phase).toBe('view');
+	});
+
+	// H0503 — privacy / cleanup / error recovery. The controller's
+	// emitted state is the page's only window onto the run, so the
+	// page-level guarantee that no package bytes survive a run is
+	// only as good as the state object. Every emitted phase is
+	// checked, not just the terminal one.
+	it('never carries the package bytes in any emitted state', async () => {
+		const controller = new PhonemePageController();
+		const emitted: PhonemePageState[] = [];
+		controller.subscribe((state) => emitted.push(state));
+
+		const file = makeFile('no-persist.elang', new Uint8Array([1, 2, 3, 4, 5]));
+		const request: RequestPhonemeView = async () => httpErrorOutcome(413, 'request.body');
+
+		await controller.select(file as unknown as File, request);
+
+		// The run started in `validating` and ended in `error`.
+		expect(emitted.length).toBeGreaterThanOrEqual(2);
+		expect(emitted[0]?.phase).toBe('validating');
+		expect(emitted[emitted.length - 1]?.phase).toBe('error');
+
+		for (const state of emitted) {
+			const record = state as unknown as Record<string, unknown>;
+			expect(record.bytes).toBeUndefined();
+			expect(record.buffer).toBeUndefined();
+			expect(record.arrayBuffer).toBeUndefined();
+			expect(record.data).toBeUndefined();
+		}
+	});
+});
+
+describe('PhonemePageController client-side upload cap (H0503)', () => {
+	it('rejects an oversized selection without reading any bytes', async () => {
+		// A 17 MiB selection would, without the cap, buffer 17 MiB
+		// into browser memory before the page could complain. The
+		// cap fires before `readFileWithProgress` is even called,
+		// so the stub `stream()` (which would throw) is never
+		// touched.
+		const controller = new PhonemePageController();
+		const oversized: MinimalFile = {
+			name: 'huge.elang',
+			size: 17 * 1024 * 1024,
+			stream: () => {
+				throw new Error('stream should not be called for an oversized file');
+			}
+		};
+		let requested = false;
+		const request = vi.fn(async () => {
+			requested = true;
+			return viewOutcome(successView());
+		});
+		await controller.select(oversized as unknown as File, request);
+		expect(requested).toBe(false);
+		const state = controller.state;
+		expect(state.phase).toBe('error');
+		if (state.phase === 'error') {
+			expect(state.error.title).toMatch(/too large/i);
+			expect(state.error.message).toContain('17.0 MiB');
+		}
+	});
+
+	it('accepts a file exactly at the cap', async () => {
+		const controller = new PhonemePageController();
+		const atCap = makeFile('at-cap.elang', new Uint8Array([1, 2, 3]));
+		(atCap as { size: number }).size = 16 * 1024 * 1024;
+		const { request } = makeRequest(async () => viewOutcome(successView()));
+		await controller.select(atCap as unknown as File, request);
+		expect(controller.state.phase).toBe('view');
+	});
+
+	it('accepts a file one byte over the cap (regression boundary)', async () => {
+		const controller = new PhonemePageController();
+		const overByOne: MinimalFile = {
+			name: 'over.elang',
+			size: 16 * 1024 * 1024 + 1,
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					pull(c) {
+						c.close();
+					},
+					cancel() {
+						/* no-op */
+					}
+				})
+		};
+		const request = vi.fn(async () => viewOutcome(successView()));
+		await controller.select(overByOne as unknown as File, request);
+		expect(controller.state.phase).toBe('error');
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('does not emit a stale oversize error when the run is superseded during the abort', async () => {
+		// The generation counter exists so a superseded run cannot
+		// overwrite the state of a newer one. The oversize branch is
+		// the one place where the emit happens synchronously — between
+		// the generation bump and the emit there is no `await`, so the
+		// only way the run can become stale is a re-entrant state
+		// change triggered by the abort of the previous run. That is
+		// exactly what happens when the user cancels while the next
+		// selection is being processed.
+		const controller = new PhonemePageController();
+		const phases: string[] = [];
+		controller.subscribe((state) => phases.push(state.phase));
+
+		let transportEntered!: () => void;
+		const entered = new Promise<void>((resolve) => {
+			transportEntered = resolve;
+		});
+
+		const inFlight = controller.select(
+			makeFile('first.elang', new Uint8Array([1, 2, 3])) as unknown as File,
+			(_bytes, _fileName, signal) =>
+				new Promise<PhonemeRequestOutcome>((_resolve, reject) => {
+					transportEntered();
+					signal.addEventListener('abort', () => {
+						controller.reset();
+						reject(new DOMException('Aborted', 'AbortError'));
+					});
+				})
+		);
+
+		// Wait until the first run is actually in the transport, so the
+		// second selection is guaranteed to abort it.
+		await entered;
+
+		const oversize: MinimalFile = {
+			name: 'huge.elang',
+			size: 16 * 1024 * 1024 + 1,
+			stream: () => {
+				throw new Error('the oversize branch must never read the file');
+			}
+		};
+		const request = vi.fn(async () => viewOutcome(successView()));
+		await controller.select(oversize as unknown as File, request);
+		await inFlight;
+
+		expect(request).not.toHaveBeenCalled();
+		expect(phases).not.toContain('error');
+		expect(controller.state.phase).toBe('idle');
 	});
 });

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Upload } from '@lucide/svelte';
 	import { UPLOAD_DROP_ZONE_LABEL, UPLOAD_PICKER_LABEL } from '$lib/phonemes';
+	import { ACCEPT_ATTRIBUTE } from '$lib/upload/limits';
 
 	let { onfiles }: { onfiles: (files: File[] | null) => void } = $props();
 	let dragging = $state(false);
@@ -60,8 +61,10 @@
 	<input
 		bind:this={fileInput}
 		type="file"
-		accept=".elang,application/octet-stream"
+		accept={ACCEPT_ATTRIBUTE}
 		class="sr-only"
+		tabindex="-1"
+		aria-label="ELANG package file"
 		onchange={handleChange}
 	/>
 </div>
@@ -73,7 +76,12 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 3rem 1.5rem;
-		border: 2px dashed rgb(209 213 219);
+		/* The dashed border IS the drop affordance — there is no
+		 * other visual signal that this region accepts a dropped
+		 * file. WCAG 1.4.11 requires 3:1 for the boundary of a
+		 * control, so it is `rgb(140 140 140)` (3.36:1 on white),
+		 * not the lighter grey used for decorative separators. */
+		border: 2px dashed rgb(140 140 140);
 		border-radius: 0.75rem;
 		background: white;
 		transition: border-color 0.15s ease;
@@ -81,6 +89,12 @@
 	.drop-zone.dragging {
 		border-color: rgb(37 99 235);
 		background: rgb(239 246 255);
+	}
+	/* The drag fill is a blue tint, so the default muted grey only
+	 * reaches 4.44:1 against it — under the 4.5:1 AA minimum for
+	 * normal text. Darken the helper text for this state only. */
+	.drop-zone.dragging .muted {
+		color: rgb(75 85 99);
 	}
 	.icon-circle {
 		display: inline-flex;

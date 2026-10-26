@@ -1,16 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
+import { SDK_SERVICE_URL } from '$app/env/private';
 import { MAX_FILE_BYTES } from '$lib/upload/limits';
-import { env } from '$env/dynamic/private';
-
-/**
- * The validation service.
- *
- * v0.1.0 keeps the service stateless: it validates the package and
- * returns a verdict, and retains nothing (REQ-HUB-003). The endpoint
- * is configured per deployment; without it the route reports that
- * validation is unavailable rather than pretending to validate.
- */
-const VALIDATION_SERVICE_URL = env.VALIDATION_SERVICE_URL;
 
 /**
  * Maximum time to wait for the upstream validation service.
@@ -34,7 +24,21 @@ const UPSTREAM_TIMEOUT_MS = 10_000;
  * the bound (REQ-HUB-002).
  */
 export const POST: RequestHandler = async ({ request, fetch }) => {
-	if (!VALIDATION_SERVICE_URL) {
+	/**
+	 * The validation service.
+	 *
+	 * v0.1.0 keeps the service stateless: it validates the package and
+	 * returns a verdict, and retains nothing (REQ-HUB-003). The endpoint
+	 * is configured per deployment; without it the route reports that
+	 * validation is unavailable rather than pretending to validate.
+	 *
+	 * The URL is read per request from `$app/env/private` — SvelteKit 3's
+	 * adapter-neutral accessor, generated from the `src/env.ts`
+	 * declaration — so it stays live on the request path instead of
+	 * being captured at module load.
+	 */
+	const serviceUrl = SDK_SERVICE_URL;
+	if (!serviceUrl) {
 		return json(
 			{ ok: false, diagnostics: [], messages: ['Validation is unavailable right now.'] },
 			{ status: 503 }
@@ -108,7 +112,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 	let response: Response;
 	try {
-		response = await fetch(VALIDATION_SERVICE_URL, {
+		response = await fetch(serviceUrl, {
 			method: 'POST',
 			headers: { 'content-type': 'application/octet-stream' },
 			body,

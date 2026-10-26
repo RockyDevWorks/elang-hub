@@ -26,9 +26,13 @@ export {
 export {
 	DEFAULT_SDK_TIMEOUT_MS,
 	MAX_SDK_BODY_BYTES,
+	MAX_SDK_DIAGNOSTICS,
 	MAX_SDK_RESPONSE_BYTES,
+	MAX_SDK_STRING_LENGTH,
 	assertBodyWithinLimit,
-	composeAbortSignal
+	clampSdkString,
+	composeAbortSignal,
+	stripTrailingSlashes
 } from './bounds';
 
 export { checkSupportedVersions, type VersionPair } from './version';

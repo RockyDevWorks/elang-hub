@@ -26,39 +26,34 @@
  */
 
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-import { SdkClient, MAX_SDK_BODY_BYTES, type SdkResult } from '$lib/sdk';
-
-const SLASH_CHAR_CODE = 47;
+import { SDK_SERVICE_URL } from '$app/env/private';
+import { SdkClient, MAX_SDK_BODY_BYTES, stripTrailingSlashes, type SdkResult } from '$lib/sdk';
 
 /**
  * Resolve the SDK service URL from the runtime environment.
  *
- * `$env/dynamic/private` is SvelteKit's adapter-neutral runtime env
+ * `$app/env/private` is SvelteKit's adapter-neutral runtime env
  * access — it reads from `process.env` under Node and from the
- * Cloudflare platform bindings in production. The deployment must
- * set `SDK_SERVICE_URL`; an unconfigured deployment fails loudly
- * (503) rather than silently fall back to a default.
+ * Cloudflare platform bindings in production. The variable is
+ * declared in `src/env.ts`; SvelteKit generates the accessor
+ * module from that declaration. The deployment must set
+ * `SDK_SERVICE_URL`; an unconfigured deployment fails loudly (503)
+ * rather than silently fall back to a default.
  */
 function resolveServiceUrl(): string {
-	const url = env.SDK_SERVICE_URL;
+	const url = SDK_SERVICE_URL;
 	if (!url) {
 		throw error(503, {
 			message: 'The validation service URL is not configured on this deployment.'
 		});
 	}
-	// Strip trailing slashes with an explicit scan rather than a
-	// regex. `/\/+$/` is quadratic on hostile input: the `+`
+	// Strip trailing slashes with an explicit backwards scan rather
+	// than a regex. `/\/+$/` is quadratic on hostile input: the `+`
 	// backtracks at every start offset, so a URL like "//////x"
-	// costs O(n^2). The SDK service URL is deployment
-	// configuration, but it is still environment input and the
-	// endpoint is public — no reason to leave a super-linear
-	// pattern on the request path.
-	let end = url.length;
-	while (end > 0 && url.charCodeAt(end - 1) === SLASH_CHAR_CODE) {
-		end--;
-	}
-	return url.slice(0, end);
+	// costs O(n²). The SDK service URL is deployment configuration,
+	// but it is still environment input and the endpoint is public —
+	// no reason to leave a super-linear pattern on the request path.
+	return stripTrailingSlashes(url);
 }
 
 /**

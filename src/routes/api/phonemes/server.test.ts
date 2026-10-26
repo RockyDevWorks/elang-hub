@@ -13,9 +13,9 @@
  *
  * The tests stub the SDK client with `vi.mock` so the endpoint can
  * be exercised without a real service, and stub
- * `$env/dynamic/private` with `vi.stubEnv` so the URL is
- * configurable per test. The cap check runs against `Content-Length`
- * AND the read length, so both paths need a test.
+ * `$app/env/private` so the URL is configurable per test. The cap
+ * check runs against `Content-Length` AND the read length, so both
+ * paths need a test.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,12 +37,15 @@ vi.mock('$lib/sdk', async () => {
 	};
 });
 
-// Mock `$env/dynamic/private` so we can control `SDK_SERVICE_URL`
-// per test without touching `process.env` directly.
+// Mock `$app/env/private` so we can control `SDK_SERVICE_URL`
+// per test without touching `process.env` directly. The getter
+// keeps the binding live: the endpoint reads the imported binding
+// at request time, so mutating `envMock` between tests is
+// observed by the next request.
 const envMock: Record<string, string | undefined> = {};
-vi.mock('$env/dynamic/private', () => ({
-	get env() {
-		return envMock;
+vi.mock('$app/env/private', () => ({
+	get SDK_SERVICE_URL() {
+		return envMock.SDK_SERVICE_URL;
 	}
 }));
 

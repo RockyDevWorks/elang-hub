@@ -22,6 +22,8 @@
 import type { PhonemeViewResult } from '../view';
 import type { PhonemeRequestOutcome } from './error-mapper';
 import { mapRequestOutcome } from './error-mapper';
+import { formatBytes } from './format';
+import { MAX_FILE_BYTES } from '../upload/limits';
 
 export type PhonemePagePhase = 'idle' | 'validating' | 'view' | 'error';
 
@@ -118,6 +120,12 @@ export class PhonemePageController {
 	 * forwarded to the adapter, and the resulting outcome drives
 	 * the next state.
 	 *
+	 * The selection is size-checked BEFORE any byte is read
+	 * (H0503). Without that guard the browser would buffer the whole
+	 * file into memory — a 2 GB selection would exhaust the tab
+	 * before the page could complain. The check mirrors the
+	 * server-side `MAX_SDK_BODY_BYTES` cap.
+	 *
 	 * A generation counter prevents a slow run from overwriting the
 	 * state of a newer one (H0408 — supersede is race-safe).
 	 */
@@ -129,6 +137,19 @@ export class PhonemePageController {
 
 		const fileName = file.name;
 		const fileSize = file.size;
+
+		if (fileSize > MAX_FILE_BYTES) {
+			if (generation === this.#generation) {
+				this.#emitError(fileName, fileSize, {
+					title: 'That package is too large',
+					message:
+						`The selected package is ${formatBytes(fileSize)}. ` +
+						`The maximum accepted size is ${formatBytes(MAX_FILE_BYTES)}. ` +
+						'Choose a smaller .elang package.'
+				});
+			}
+			return;
+		}
 
 		this.#emit({
 			phase: 'validating',

@@ -113,6 +113,40 @@ describe('error-mapper / mapRequestOutcome', () => {
 		expect(info.title).toMatch(/validation/i);
 	});
 
+	// A service fault and a package fault both arrive at the `validate`
+	// stage, so the stage alone cannot title them. The code carries
+	// the distinction: a service fault must not tell the user their
+	// package is invalid.
+	it.each([
+		['service_unavailable', /service unavailable/i],
+		['timeout', /timed out/i],
+		['package_too_large', /large/i],
+		['cancelled', /cancelled/i],
+		['internal_error', /unexpected failure/i],
+		['unsupported_version', /unsupported package version/i],
+		['unsupported_feature', /unsupported package feature/i]
+	] as const)('titles the %s SDK code by its own condition, not by stage', (code, pattern) => {
+		const outcome = sdkErrorOutcome(hubError({ stage: 'validate', code }));
+		const info = mapRequestOutcome(outcome);
+		expect(info.title).toMatch(pattern);
+	});
+
+	it('still titles package-content SDK codes by stage', () => {
+		expect(
+			mapRequestOutcome(sdkErrorOutcome(hubError({ stage: 'inspect', code: 'malformed_package' })))
+				.title
+		).toMatch(/structure/i);
+		expect(
+			mapRequestOutcome(sdkErrorOutcome(hubError({ stage: 'verify', code: 'corrupted_resource' })))
+				.title
+		).toMatch(/integrity/i);
+		expect(
+			mapRequestOutcome(
+				sdkErrorOutcome(hubError({ stage: 'validate', code: 'descriptor_invalid' }))
+			).title
+		).toMatch(/validation/i);
+	});
+
 	it('preserves HTML-special characters in the SDK detail path', () => {
 		const outcome = sdkErrorOutcome(
 			hubError({

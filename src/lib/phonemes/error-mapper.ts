@@ -83,11 +83,51 @@ function mapViewResult(result: PhonemeViewResult): PhonemePageErrorInfo {
 }
 
 function mapHubError(error: HubError): PhonemePageErrorInfo {
-	const title = bound(titleForStage(error.stage), MAX_TITLE_LENGTH);
+	const title = bound(titleForError(error), MAX_TITLE_LENGTH);
 	const detail = error.detail ? bound(stripControls(error.detail), MAX_DETAIL_LENGTH) : undefined;
 	return detail
 		? { title, message: bound(error.message, MAX_MESSAGE_LENGTH), detail }
 		: { title, message: bound(error.message, MAX_MESSAGE_LENGTH) };
+}
+
+/**
+ * Pick the title for an SDK failure.
+ *
+ * Two families of failure arrive under the same `sdk_error` envelope:
+ * faults in the PACKAGE (malformed container, corrupt resource,
+ * invalid ELD) and faults in the SERVICE (unreachable, timed out,
+ * too large, internal error). The stage alone cannot tell them
+ * apart — an unreachable service and a broken package both surface
+ * at the `validate` stage — so the codes that describe a service
+ * condition get their own titles.
+ *
+ * Without that split, an outage tells the user their package is
+ * invalid. That is wrong (the package may be perfect) and
+ * unactionable (retrying a different file will not help).
+ */
+function titleForError(error: HubError): string {
+	switch (error.code) {
+		case 'service_unavailable':
+			return 'Validation service unavailable';
+		case 'timeout':
+			return 'Validation timed out';
+		case 'package_too_large':
+			return 'Package too large';
+		case 'cancelled':
+			return 'Validation cancelled';
+		case 'internal_error':
+			return 'Unexpected failure';
+		case 'unsupported_version':
+			return 'Unsupported package version';
+		case 'unsupported_feature':
+			return 'Unsupported package feature';
+		default:
+			// Every remaining code describes the package's own content:
+			// malformed_package, corrupted_resource,
+			// integrity_check_failed, descriptor_invalid and
+			// phoneme_inventory_invalid. The stage says which kind.
+			return titleForStage(error.stage);
+	}
 }
 
 function mapHttpError(status: number, detail?: string): PhonemePageErrorInfo {

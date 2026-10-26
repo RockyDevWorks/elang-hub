@@ -18,15 +18,15 @@ thread.
 
 ## Hard limits
 
-| Limit | Constant | Value | Enforced at | Pinned by |
-| --- | --- | --- | --- | --- |
-| Client upload cap | `MAX_FILE_BYTES` | 16 MiB | `PhonemePageController.select` (before any read) and the browser file input | `src/routes/budgets.test.ts` (at-cap accepted, one-byte-over rejected, no fetch made) |
-| Server body cap | `MAX_SDK_BODY_BYTES` | 16 MiB | `src/routes/api/phonemes/+server.ts` and `SdkClient.assertBodyWithinLimit` | `src/lib/sdk/client.test.ts` and `src/routes/api/phonemes/server.test.ts` |
-| Response body cap | `MAX_SDK_RESPONSE_BYTES` | 4 MiB | `SdkClient` while reading the response stream | `src/routes/budgets.test.ts` (one byte over → `malformed_response`) |
-| Diagnostic cap | `MAX_SDK_DIAGNOSTICS` | 200 | `SdkClient` after parsing | `src/routes/budgets.test.ts` (201 returned → 200 kept) |
-| String cap | `MAX_SDK_STRING_LENGTH` | 4 096 code units (`+ 1` ellipsis) | `SdkClient` via `clampSdkString` | `src/routes/budgets.test.ts` (over-cap → `…`-terminated, length `MAX + 1`) |
-| Round-trip timeout | `DEFAULT_SDK_TIMEOUT_MS` | 30 s | `SdkClient` via `composeAbortSignal` | `src/routes/budgets.test.ts` (1 ms timeout → `timeout` code) |
-| File count per selection | `MAX_FILE_COUNT` | 1 | Page file input (no `multiple` attribute); the page handler selects the first file of a multi-file drop and ignores the rest | `src/routes/budgets.test.ts` (picker has no `multiple`) |
+| Limit                    | Constant                 | Value                             | Enforced at                                                                                                                  | Pinned by                                                                             |
+| ------------------------ | ------------------------ | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Client upload cap        | `MAX_FILE_BYTES`         | 16 MiB                            | `PhonemePageController.select` (before any read) and the browser file input                                                  | `src/routes/budgets.test.ts` (at-cap accepted, one-byte-over rejected, no fetch made) |
+| Server body cap          | `MAX_SDK_BODY_BYTES`     | 16 MiB                            | `src/routes/api/phonemes/+server.ts` and `SdkClient.assertBodyWithinLimit`                                                   | `src/lib/sdk/client.test.ts` and `src/routes/api/phonemes/server.test.ts`             |
+| Response body cap        | `MAX_SDK_RESPONSE_BYTES` | 4 MiB                             | `SdkClient` while reading the response stream                                                                                | `src/routes/budgets.test.ts` (one byte over → `malformed_response`)                   |
+| Diagnostic cap           | `MAX_SDK_DIAGNOSTICS`    | 200                               | `SdkClient` after parsing                                                                                                    | `src/routes/budgets.test.ts` (201 returned → 200 kept)                                |
+| String cap               | `MAX_SDK_STRING_LENGTH`  | 4 096 code units (`+ 1` ellipsis) | `SdkClient` via `clampSdkString`                                                                                             | `src/routes/budgets.test.ts` (over-cap → `…`-terminated, length `MAX + 1`)            |
+| Round-trip timeout       | `DEFAULT_SDK_TIMEOUT_MS` | 30 s                              | `SdkClient` via `composeAbortSignal`                                                                                         | `src/routes/budgets.test.ts` (1 ms timeout → `timeout` code)                          |
+| File count per selection | `MAX_FILE_COUNT`         | 1                                 | Page file input (no `multiple` attribute); the page handler selects the first file of a multi-file drop and ignores the rest | `src/routes/budgets.test.ts` (picker has no `multiple`)                               |
 
 The client and server caps are pinned to the same value by
 `src/lib/upload/limits.test.ts` so the two cannot drift apart.
@@ -42,11 +42,11 @@ exercise the ceilings in its rendering path so a regression in the
 view layer is caught even though the ceilings themselves are
 guaranteed by the SDK.
 
-| Ceiling | Value | Source | Pinned by |
-| --- | --- | --- | --- |
-| Groups in an inventory | 16 | `crates/elang-core/src/model/eld.rs:28` | `src/routes/budgets.test.ts` (16-group render) |
-| Root phonemes across all groups | 256 | `crates/elang-core/src/model/eld.rs:30` | `src/routes/budgets.test.ts` (256-root render) |
-| Allophones per root | 16 | `crates/elang-core/src/model/eld.rs:26` | `src/routes/budgets.test.ts` (16-allophones-per-root render) |
+| Ceiling                         | Value | Source                                  | Pinned by                                                    |
+| ------------------------------- | ----- | --------------------------------------- | ------------------------------------------------------------ |
+| Groups in an inventory          | 16    | `crates/elang-core/src/model/eld.rs:28` | `src/routes/budgets.test.ts` (16-group render)               |
+| Root phonemes across all groups | 256   | `crates/elang-core/src/model/eld.rs:30` | `src/routes/budgets.test.ts` (256-root render)               |
+| Allophones per root             | 16    | `crates/elang-core/src/model/eld.rs:26` | `src/routes/budgets.test.ts` (16-allophones-per-root render) |
 
 The worst-case combined inventory the SDK can ever produce is
 `16 × 256 × 16 = 65 536` allophones. Rendering all of it in one go

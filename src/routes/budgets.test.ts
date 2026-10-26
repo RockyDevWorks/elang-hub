@@ -52,6 +52,12 @@ import {
 import PhonemeViewer from '$lib/components/PhonemeViewer.svelte';
 import UploadPrompt from '$lib/components/UploadPrompt.svelte';
 import { makeFile, type MinimalFile } from '$lib/phonemes/test-helpers';
+import {
+	emptyInventory,
+	jsonResponse,
+	stubBrowserFetch,
+	validateEnvelope
+} from '$lib/phonemes/flow-harness';
 import type {
 	AllophonePayload,
 	GroupPayload,
@@ -63,28 +69,10 @@ import type {
 /* Fixtures                                                            */
 /* ------------------------------------------------------------------ */
 
-function jsonResponse(body: unknown, status = 200): Response {
-	return new Response(JSON.stringify(body), {
-		status,
-		headers: { 'content-type': 'application/json' }
-	});
-}
-
-const originalFetch = globalThis.fetch;
-
-function stubBrowserFetch(
-	handler: (url: string, init: RequestInit) => Response | Promise<Response>
-): void {
-	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-		return handler(url, init ?? {});
-	}) as unknown as typeof fetch;
-}
-
 /**
  * Build an SDK-conformant inventory payload at a chosen point on the
  * upstream ceiling. `groups` ranges over the reserved kinds plus
- * `g00..gNN` custom names. `rootsPerGroup` distributes a contiguous
+ * `ga..gp` custom names. `rootsPerGroup` distributes a contiguous
  * range of single-letter IPA identifiers across the groups; the SDK
  * does not require uniqueness across groups, so repeated identifiers
  * narrow and render fine.
@@ -138,32 +126,49 @@ function buildInventory(
 	};
 }
 
-/** Wrap an inventory in the SDK-conformant `SdkValidateResult` envelope. */
-function validateEnvelope(inventory: InventoryPayload): Record<string, unknown> {
-	return {
-		ok: true,
-		mode: 'validate',
-		specVersion: '0.0.1-1',
-		binaryContainerVersion: '0.1.0',
-		phonemeResourcePath: 'Linguistics/aelith.eld',
-		inventory,
-		diagnostics: []
-	};
+/**
+ * Build a VALID JSON response body of exactly `totalBytes` bytes.
+ *
+ * The body must be valid JSON so that a rejection can only come
+ * from the byte cap. A body of `'x'.repeat(n)` is not JSON, so the
+ * client would report `malformed_response` from the parse step even
+ * if the cap were never enforced — the test would pass for the
+ * wrong reason.
+ *
+ * The padding rides in `phonemeResourcePath`, which the adapter
+ * clamps to `MAX_SDK_STRING_LENGTH` after parsing; the clamp happens
+ * *after* the wire bytes are counted, so it does not affect the
+ * size this helper produces.
+ */
+function validResponseBodyOfExactSize(totalBytes: number): string {
+	const envelope = validateEnvelope(emptyInventory());
+	const base = JSON.stringify({ ...envelope, phonemeResourcePath: '' });
+	const padding = totalBytes - base.length;
+	if (padding < 0) {
+		throw new Error(
+			`cannot build a ${totalBytes}-byte body; the envelope alone is ${base.length} bytes`
+		);
+	}
+	const body = JSON.stringify({ ...envelope, phonemeResourcePath: 'x'.repeat(padding) });
+	// ASCII-only, so character count is byte count.
+	if (body.length !== totalBytes) {
+		throw new Error(`padding produced ${body.length} bytes, expected ${totalBytes}`);
+	}
+	return body;
 }
 
-/** A minimal, valid inventory for the envelope-only SDK client tests. */
-function emptyInventory(): InventoryPayload {
-	return {
-		package: {
-			identifier: 'urn:elang:language:x:x:1.0.0',
-			namespace: 'x',
-			languageName: 'x',
-			languageVersion: '1.0.0',
-			name: 'x',
-			description: null
-		},
-		inventory: { groups: [] }
-	};
+/**
+ * Restore the real `fetch` after a test installed a stub.
+ *
+ * `stubBrowserFetch` returns its own restore function, so the suite
+ * keeps one handle per install instead of relying on a module-level
+ * `originalFetch` captured at import time.
+ */
+let restoreFetch: (() => void) | null = null;
+
+function installStub(handler: Parameters<typeof stubBrowserFetch>[0]): void {
+	restoreFetch?.();
+	restoreFetch = stubBrowserFetch(handler);
 }
 
 /**
@@ -177,7 +182,7 @@ async function runFlow(
 	validateBody: Record<string, unknown>
 ): Promise<{ state: PhonemePageState; fetchCalls: number }> {
 	let fetchCalls = 0;
-	stubBrowserFetch((url) => {
+	installStub((url) => {
 		if (url.endsWith('/api/phonemes')) {
 			fetchCalls++;
 			return Promise.resolve(jsonResponse(validateBody));
@@ -190,11 +195,12 @@ async function runFlow(
 }
 
 beforeEach(() => {
-	stubBrowserFetch(() => jsonResponse(validateEnvelope(emptyInventory())));
+	installStub(() => jsonResponse(validateEnvelope(emptyInventory())));
 });
 
 afterEach(() => {
-	globalThis.fetch = originalFetch;
+	restoreFetch?.();
+	restoreFetch = null;
 });
 
 /* ------------------------------------------------------------------ */
@@ -235,11 +241,32 @@ describe('SDK adapter budgets (H0506)', () => {
 		expect(stub).not.toHaveBeenCalled();
 	});
 
-	it('rejects a response body one byte over MAX_SDK_RESPONSE_BYTES mid-read', async () => {
-		// A single oversized chunk trips the cap on the first read,
-		// proving the cap is enforced before the body is buffered.
-		const oversized = 'x'.repeat(MAX_SDK_RESPONSE_BYTES + 1);
-		const stub = vi.fn(async () => new Response(oversized, { status: 200 }));
+	it('accepts a response body exactly at MAX_SDK_RESPONSE_BYTES', async () => {
+		// The positive half of the cap: a body at the limit is read
+		// whole and parsed. Without this, the rejection test below
+		// could pass simply because the cap was set to zero.
+		const body = validResponseBodyOfExactSize(MAX_SDK_RESPONSE_BYTES);
+		expect(new TextEncoder().encode(body).byteLength).toBe(MAX_SDK_RESPONSE_BYTES);
+
+		const stub = vi.fn(async () => new Response(body, { status: 200 }));
+		const client = new SdkClient({
+			serviceUrl: 'http://sdk.test',
+			fetchImpl: stub as unknown as typeof fetch
+		});
+
+		const result = await client.validate(new Uint8Array(10));
+
+		expect(result.ok).toBe(true);
+	});
+
+	it('rejects a VALID-JSON response body one byte over MAX_SDK_RESPONSE_BYTES mid-read', async () => {
+		// The body is valid JSON, so a rejection can only come from
+		// the byte cap — not from the parse step. The specific message
+		// pins which guard fired.
+		const body = validResponseBodyOfExactSize(MAX_SDK_RESPONSE_BYTES + 1);
+		expect(new TextEncoder().encode(body).byteLength).toBe(MAX_SDK_RESPONSE_BYTES + 1);
+
+		const stub = vi.fn(async () => new Response(body, { status: 200 }));
 		const client = new SdkClient({
 			serviceUrl: 'http://sdk.test',
 			fetchImpl: stub as unknown as typeof fetch
@@ -250,6 +277,7 @@ describe('SDK adapter budgets (H0506)', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.code).toBe('malformed_response');
+			expect(result.message).toBe('Service response exceeded the size limit.');
 		}
 	});
 
@@ -436,7 +464,7 @@ describe('page-level budgets (H0506)', () => {
 
 	it('50 sequential uploads settle on the LAST run with bounded emissions', async () => {
 		const body = validateEnvelope(buildInventory(1, 1, 0));
-		stubBrowserFetch((url) => {
+		installStub((url) => {
 			if (url.endsWith('/api/phonemes')) return Promise.resolve(jsonResponse(body));
 			return Promise.reject(new Error(`unexpected fetch to ${url}`));
 		});

@@ -62,6 +62,12 @@ const RULES: readonly Rule[] = [
 	},
 	{
 		name: 'hardcoded third-party endpoint',
+		// The Hub may only talk to its own origin (`.connect-src 'self'`).
+		// A literal third-party URL is an exfiltration path out of the
+		// page, so the audit matches plain strings, single-quoted
+		// strings, double-quoted strings AND template literals — the
+		// last is the common "easy" form (`fetch(`https://…`)`) that
+		// a string-only regex would silently miss.
 		pattern: /\bfetch\s*\(\s*['"`]https?:\/\//,
 		reason:
 			'The browser may only talk to its own origin. A literal third-party URL would be an exfiltration path out of the page.'

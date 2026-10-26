@@ -64,6 +64,8 @@ import {
 } from '$lib/phonemes';
 import PhonemeViewer from '$lib/components/PhonemeViewer.svelte';
 import { makeBrokenFile, makeFile, type MinimalFile } from '$lib/phonemes/test-helpers';
+import { jsonResponse, stubBrowserFetch, validateEnvelope } from '$lib/phonemes/flow-harness';
+import type { GroupPayload, InventoryPayload } from '$lib/view/inventory';
 
 /* ------------------------------------------------------------------ */
 /* Harness                                                             */
@@ -71,20 +73,14 @@ import { makeBrokenFile, makeFile, type MinimalFile } from '$lib/phonemes/test-h
 
 type FetchHandler = (url: string, init: RequestInit) => Response | Promise<Response>;
 
-const originalFetch = globalThis.fetch;
-
 /** Handler for the browser → Hub hop. Defaults to the real endpoint. */
 let browserHandler: FetchHandler = (_url, init) => callEndpoint(init);
 
 /** Handler for the Hub → validation service hop. */
 let sdkHandler: FetchHandler = () => jsonResponse(conformantSdkResult());
 
-function jsonResponse(body: unknown, status = 200): Response {
-	return new Response(JSON.stringify(body), {
-		status,
-		headers: { 'content-type': 'application/json' }
-	});
-}
+/** Restore handle for the per-test fetch stub. */
+let restoreFetch: (() => void) | null = null;
 
 /**
  * Route a browser-side fetch into the real endpoint handler.
@@ -125,18 +121,18 @@ beforeEach(() => {
 	browserHandler = (_url, init) => callEndpoint(init);
 	sdkHandler = () => jsonResponse(conformantSdkResult());
 
-	globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-		const requestInit: RequestInit = init ?? {};
+	restoreFetch?.();
+	restoreFetch = stubBrowserFetch((url, init) => {
 		if (url.endsWith('/api/phonemes')) {
-			return browserHandler(url, requestInit);
+			return browserHandler(url, init);
 		}
-		return sdkHandler(url, requestInit);
-	}) as unknown as typeof fetch;
+		return sdkHandler(url, init);
+	});
 });
 
 afterEach(() => {
-	globalThis.fetch = originalFetch;
+	restoreFetch?.();
+	restoreFetch = null;
 });
 
 /** Run the real controller against the real transport, end to end. */
@@ -159,93 +155,93 @@ async function flushUntil(predicate: () => boolean, maxTicks = 100): Promise<voi
 /* ------------------------------------------------------------------ */
 
 /**
- * An SDK-conformant `validate` verdict.
+ * The conformant `aelith` inventory used as the default `validate`
+ * verdict.
  *
  * Every field satisfies the `SdkValidateResult` contract, and the
  * inventory payload satisfies every clause of `narrowInventoryPayload`:
  * the URN prefix, the SemVer shape, the reserved group kinds, the
- * custom group name grammar, and the condition tree shape.
+ * custom group name grammar, and the condition tree shape. The
+ * envelope shell around the inventory is built by the shared
+ * `validateEnvelope` helper so the two route-level suites do not
+ * duplicate it.
  */
-function conformantSdkResult(): Record<string, unknown> {
-	return {
-		ok: true,
-		mode: 'validate',
-		specVersion: '0.0.1-1',
-		binaryContainerVersion: '0.1.0',
-		phonemeResourcePath: 'Linguistics/aelith.eld',
-		inventory: {
-			package: {
-				identifier: 'urn:elang:language:rocky:aelith:1.0.0',
-				namespace: 'rocky',
-				languageName: 'aelith',
-				languageVersion: '1.0.0',
-				name: 'Aelith',
-				description: 'A language used by the H0505 integration suite.'
+const aelithGroups: readonly GroupPayload[] = [
+	{
+		kind: 'consonants',
+		roots: [
+			{
+				ipa: 'p',
+				roman: 'p',
+				when: null,
+				allophones: [
+					{ ipa: 'pʰ', roman: 'ph', when: null },
+					{ ipa: 'pʰ', roman: null, when: null }
+				]
 			},
-			inventory: {
-				groups: [
+			{ ipa: 't', roman: 't', when: null, allophones: [] }
+		]
+	},
+	{
+		kind: 'vowels',
+		roots: [
+			{
+				ipa: 'a',
+				roman: 'a',
+				when: {
+					children: [
+						{
+							kind: 'predicate',
+							predicate: { kind: 'word-position', value: 'initial' }
+						}
+					]
+				},
+				allophones: []
+			}
+		]
+	},
+	{
+		kind: { name: 'clicks' },
+		roots: [
+			{
+				ipa: 'ʘ',
+				roman: 'ǀ',
+				when: null,
+				allophones: [
 					{
-						kind: 'consonants',
-						roots: [
-							{
-								ipa: 'p',
-								roman: 'p',
-								when: null,
-								allophones: [
-									{ ipa: 'pʰ', roman: 'ph', when: null },
-									{ ipa: 'pʰ', roman: null, when: null }
-								]
-							},
-							{ ipa: 't', roman: 't', when: null, allophones: [] }
-						]
-					},
-					{
-						kind: 'vowels',
-						roots: [
-							{
-								ipa: 'a',
-								roman: 'a',
-								when: {
-									children: [
-										{
-											kind: 'predicate',
-											predicate: { kind: 'word-position', value: 'initial' }
-										}
-									]
-								},
-								allophones: []
-							}
-						]
-					},
-					{
-						kind: { name: 'clicks' },
-						roots: [
-							{
-								ipa: 'ʘ',
-								roman: 'ǀ',
-								when: null,
-								allophones: [
-									{
-										ipa: 'ʘ',
-										roman: null,
-										when: {
-											children: [
-												{
-													kind: 'predicate',
-													predicate: { kind: 'syllable-position', value: 'onset' }
-												}
-											]
-										}
-									}
-								]
-							}
-						]
+						ipa: 'ʘ',
+						roman: null,
+						when: {
+							children: [
+								{
+									kind: 'predicate',
+									predicate: { kind: 'syllable-position', value: 'onset' }
+								}
+							]
+						}
 					}
 				]
 			}
+		]
+	}
+];
+
+function aelithInventory(): InventoryPayload {
+	return {
+		package: {
+			identifier: 'urn:elang:language:rocky:aelith:1.0.0',
+			namespace: 'rocky',
+			languageName: 'aelith',
+			languageVersion: '1.0.0',
+			name: 'Aelith',
+			description: 'A language used by the H0505 integration suite.'
 		},
-		diagnostics: []
+		inventory: { groups: aelithGroups }
 	};
+}
+
+function conformantSdkResult(): Record<string, unknown> {
+	return validateEnvelope(aelithInventory());
 }
 
 /** An SDK-conformant failure verdict at a given stage. */

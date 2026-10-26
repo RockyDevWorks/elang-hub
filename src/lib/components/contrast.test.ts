@@ -48,6 +48,8 @@ function listSvelte(dir: string): string[] {
 const FILES = {
 	uploadPrompt: join(COMPONENTS_DIR, 'UploadPrompt.svelte'),
 	uploadProgress: join(COMPONENTS_DIR, 'UploadProgress.svelte'),
+	fileDropZone: join(COMPONENTS_DIR, 'FileDropZone.svelte'),
+	uploadStatus: join(COMPONENTS_DIR, 'UploadStatus.svelte'),
 	phonemeErrorBlock: join(COMPONENTS_DIR, 'PhonemeErrorBlock.svelte'),
 	phonemeViewer: join(COMPONENTS_DIR, 'PhonemeViewer.svelte'),
 	phonemeDiagnosticsList: join(COMPONENTS_DIR, 'PhonemeDiagnosticsList.svelte'),
@@ -101,6 +103,18 @@ function ratio(
 	const b = luminance(bg);
 	const [hi, lo] = a > b ? [a, b] : [b, a];
 	return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Strip HTML comments before matching.
+ *
+ * A comment that quotes a class name or a colour literal would
+ * otherwise satisfy a pair's pattern after the class it actually
+ * guards was renamed — the checker would read the prose instead of
+ * the markup, and the guard would stop guarding.
+ */
+function stripComments(source: string): string {
+	return source.replace(/<!--[\s\S]*?-->/g, '');
 }
 
 const PAIRS: readonly Pair[] = [
@@ -340,6 +354,153 @@ const PAIRS: readonly Pair[] = [
 		find: /\.drop-zone\.dragging \.muted\s*\{[\s\S]*?color:\s*rgb\(75\s+85\s+99\)/,
 		background: DRAG_FILL,
 		min: 4.5
+	},
+
+	// ===== H01 upload-flow components =====
+	//
+	// `FileDropZone` and `UploadStatus` express their palette as
+	// Tailwind utility classes rather than `rgb()` literals, so each
+	// pair names the class it guards and supplies the resolved
+	// foreground via the `foreground` override. The guard asserts the
+	// class is still present, so renaming or dropping it fails here.
+	//
+	// The disabled button is deliberately not listed: WCAG 1.4.3
+	// exempts inactive UI components from the contrast minimum.
+	{
+		label: 'drop-zone body text (gray-600) on white',
+		file: FILES.fileDropZone,
+		find: /text-gray-600/,
+		foreground: [75, 85, 99],
+		background: WHITE,
+		min: 4.5
+	},
+	{
+		label: 'drop-zone code label (gray-600) on the code chip fill (gray-100)',
+		file: FILES.fileDropZone,
+		find: /bg-gray-100/,
+		foreground: [75, 85, 99],
+		background: [243, 244, 246],
+		min: 4.5
+	},
+	{
+		label: 'drop-zone button label (white) on the brand fill (blue-600)',
+		file: FILES.fileDropZone,
+		find: /bg-blue-600/,
+		foreground: WHITE,
+		background: [37, 99, 235],
+		min: 4.5
+	},
+	{
+		label: 'drop-zone button label (white) on the brand hover fill (blue-700)',
+		file: FILES.fileDropZone,
+		find: /bg-blue-700/,
+		foreground: WHITE,
+		background: [29, 78, 216],
+		min: 4.5
+	},
+	{
+		label: 'drop-zone small print (gray-500) on white',
+		file: FILES.fileDropZone,
+		find: /text-gray-500/,
+		foreground: [107, 114, 128],
+		background: WHITE,
+		min: 4.5
+	},
+	{
+		label: 'drop-zone boundary (gray-500) on white',
+		file: FILES.fileDropZone,
+		find: /border-gray-500/,
+		foreground: [107, 114, 128],
+		background: WHITE,
+		min: 3
+	},
+	{
+		label: 'drop-zone drag boundary (blue-500) on the drag fill (blue-50)',
+		file: FILES.fileDropZone,
+		find: /border-blue-500/,
+		foreground: [59, 130, 246],
+		background: [239, 246, 255],
+		min: 3
+	},
+	{
+		label: 'upload status selection name (gray-900) on white',
+		file: FILES.uploadStatus,
+		find: /text-gray-900/,
+		foreground: [17, 24, 39],
+		background: WHITE,
+		min: 4.5
+	},
+	{
+		label: 'upload status button label (gray-700) on white',
+		file: FILES.uploadStatus,
+		find: /text-gray-700/,
+		foreground: [55, 65, 81],
+		background: WHITE,
+		min: 4.5
+	},
+	{
+		label: 'upload status button boundary (gray-500) on white',
+		file: FILES.uploadStatus,
+		find: /border-gray-500/,
+		foreground: [107, 114, 128],
+		background: WHITE,
+		min: 3
+	},
+	{
+		label: 'upload status progress text (gray-500) on white',
+		file: FILES.uploadStatus,
+		find: /text-gray-500/,
+		foreground: [107, 114, 128],
+		background: WHITE,
+		min: 4.5
+	},
+	{
+		label: 'upload status error message (red-800) on the error fill (red-50)',
+		file: FILES.uploadStatus,
+		find: /text-red-800/,
+		foreground: [153, 27, 27],
+		background: [254, 242, 242],
+		min: 4.5
+	},
+	{
+		label: 'upload status not-accepted heading (amber-900) on the advisory fill (amber-50)',
+		file: FILES.uploadStatus,
+		find: /text-amber-900/,
+		foreground: [120, 53, 15],
+		background: [255, 251, 235],
+		min: 4.5
+	},
+	{
+		label: 'upload status messages (amber-800) on the advisory fill (amber-50)',
+		file: FILES.uploadStatus,
+		find: /text-amber-800/,
+		foreground: [146, 64, 14],
+		background: [255, 251, 235],
+		min: 4.5
+	},
+	{
+		label: 'upload status diagnostics (amber-700) on the advisory fill (amber-50)',
+		file: FILES.uploadStatus,
+		find: /text-amber-700/,
+		foreground: [180, 83, 9],
+		background: [255, 251, 235],
+		min: 4.5
+	},
+	{
+		label: 'upload status valid heading (green-800) on the success fill (green-50)',
+		file: FILES.uploadStatus,
+		find: /text-green-800/,
+		foreground: [22, 101, 52],
+		background: [240, 253, 244],
+		min: 4.5
+	},
+	{
+		label: 'upload status progress fill (blue-600) against the track (gray-200)',
+		file: FILES.uploadStatus,
+		find: /bg-blue-600/,
+		foreground: [37, 99, 235],
+		background: [229, 231, 235],
+		min: 3
 	}
 ];
 
@@ -350,6 +511,7 @@ describe('contrast guard (H0504)', () => {
 		const actual = new Set(listSvelte(COMPONENTS_DIR).map((p) => p.split('/').pop() ?? ''));
 		const expected = new Set([
 			'ConditionTree.svelte',
+			'FileDropZone.svelte',
 			'PhonemeAllophoneRow.svelte',
 			'PhonemeDiagnosticsList.svelte',
 			'PhonemeErrorBlock.svelte',
@@ -358,14 +520,25 @@ describe('contrast guard (H0504)', () => {
 			'PhonemeRootRow.svelte',
 			'PhonemeViewer.svelte',
 			'UploadProgress.svelte',
-			'UploadPrompt.svelte'
+			'UploadPrompt.svelte',
+			'UploadStatus.svelte'
 		]);
 		expect(actual).toEqual(expected);
 	});
 
 	for (const pair of PAIRS) {
 		it(pair.label, () => {
-			const source = readFileSync(pair.file, 'utf8');
+			const source = stripComments(readFileSync(pair.file, 'utf8'));
+			if (pair.foreground) {
+				// The override supplies the foreground, so the regex is
+				// never consulted for the colour — assert it still
+				// matches, or a pair would silently keep passing after
+				// the class it guards was renamed or removed.
+				expect(
+					source.match(pair.find),
+					`${pair.label}: pattern no longer present in ${pair.file}`
+				).not.toBeNull();
+			}
 			const fg = pair.foreground ?? pickForeground(source, pair.find);
 			const value = ratio(fg, pair.background);
 			expect(value, `${pair.label}: measured ${value.toFixed(2)}:1`).toBeGreaterThanOrEqual(

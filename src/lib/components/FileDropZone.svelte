@@ -66,9 +66,16 @@
 	}
 </script>
 
+<!--
+	The dashed border IS the drop affordance — there is no other
+	visual signal that this region accepts a dropped file. WCAG
+	1.4.11 requires 3:1 for the boundary of a control, so the
+	default is `border-gray-500` (~4.83:1 on white) rather than
+	the lighter `border-gray-300` (1.47:1, fails).
+-->
 <div
 	class="rounded-lg border-2 border-dashed p-10 text-center transition-colors
-		{dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'}
+		{dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-500 bg-white'}
 		{disabled ? 'opacity-60' : ''}"
 	role="group"
 	aria-label="Package upload"

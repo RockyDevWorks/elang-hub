@@ -21,7 +21,7 @@
 				{#if busy}
 					<button
 						type="button"
-						class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50
+						class="rounded border border-gray-500 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50
 							focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
 						onclick={oncancel}
 					>
@@ -30,7 +30,7 @@
 				{:else}
 					<button
 						type="button"
-						class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50
+						class="rounded border border-gray-500 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50
 							focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
 						onclick={onreset}
 					>

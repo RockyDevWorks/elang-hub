@@ -257,9 +257,54 @@ These are real gaps, recorded rather than papered over:
 | File                                          | Change                                                                                                                                         |
 | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/lib/components/accessibility.test.ts`    | New. axe-core WCAG 2.1 A/AA over 10 component cases, plus 7 keyboard/screen-reader assertions.                                                 |
-| `src/lib/components/contrast.test.ts`         | New. 33 enforced colour pairs + a component-list completeness check.                                                                           |
+| `src/lib/components/contrast.test.ts`         | New. 50 enforced colour pairs + a component-list completeness check.                                                                           |
 | `src/lib/components/UploadPrompt.svelte`      | Drop-zone boundary darkened to 3.36:1; drag-state helper text darkened to 6.94:1; hidden file input given `tabindex="-1"` and an `aria-label`. |
 | `src/lib/components/UploadProgress.svelte`    | Cancel-button border darkened to 4.83:1.                                                                                                       |
 | `src/lib/components/PhonemeErrorBlock.svelte` | Replace-button border darkened to 4.42:1 on the error fill; muted filename line darkened to 6.91:1.                                            |
 | `src/routes/+page.svelte`                     | Replace-button border darkened to 4.83:1.                                                                                                      |
 | `package.json`                                | `axe-core@^4.10.2` added as a devDependency.                                                                                                   |
+
+## 11. Change log — H01 upload-flow cherry-pick
+
+`FileDropZone.svelte` and `UploadStatus.svelte` arrive with H01's upload
+flow. They express their palette as Tailwind utility classes rather than
+`rgb()` literals, so the contrast guard pins them by class name with an
+explicit foreground override — 17 new pairs, 50 in total.
+
+Two real WCAG 1.4.11 defects came across with them and were fixed:
+
+- `FileDropZone` used `border-gray-300` for the drop-zone boundary
+  (1.47:1 on white). The dashed border _is_ the drop affordance — there
+  is no other signal that the region accepts a file — so it now uses
+  `border-gray-500` (4.83:1).
+- `UploadStatus` used `border-gray-300` for the Cancel and Reset button
+  borders (1.47:1 on white). Those buttons have no fill of their own, so
+  the border is the only cue that they are controls; they now use
+  `border-gray-500` (4.83:1).
+
+The guard itself was strengthened twice so these pairs cannot rot:
+
+- A pair that supplies a `foreground` override now asserts its `find`
+  pattern still matches the source. Without that, an overridden pair kept
+  passing after the class it guarded was renamed.
+- HTML comments are stripped before matching. A comment quoting a class
+  name satisfied the pattern after the class itself was renamed — the
+  checker was reading the prose instead of the markup.
+
+Both changes were proven by injection: reverting the drop-zone boundary
+to `border-gray-300` and renaming `text-gray-600` each fail the suite
+with a message naming the pair.
+
+`FileDropZone` and `UploadStatus` are deliberately **not** added to the
+axe-core suite. The v0.1.0 page uses the H04/H05 upload UI
+(`UploadPrompt` and `UploadProgress`), which already implements the
+picker and drag-and-drop; the H01 components are a parallel
+implementation that the release page does not mount. The colour contract
+is enforced for them so they cannot drift, but axe does not spend a case
+on a component no route renders.
+
+| File                                     | Change                                                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/components/FileDropZone.svelte` | Drop-zone boundary darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                           |
+| `src/lib/components/UploadStatus.svelte` | Cancel/Reset button borders darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                  |
+| `src/lib/components/contrast.test.ts`    | 17 pairs added for the two H01 components; `foreground`-override pairs now assert their pattern still matches; HTML comments stripped before matching. |

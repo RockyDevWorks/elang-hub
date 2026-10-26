@@ -62,7 +62,7 @@ const RULES: readonly Rule[] = [
 	},
 	{
 		name: 'hardcoded third-party endpoint',
-		pattern: /\bfetch\s*\(\s*['"]https?:\/\//,
+		pattern: /\bfetch\s*\(\s*['"`]https?:\/\//,
 		reason:
 			'The browser may only talk to its own origin. A literal third-party URL would be an exfiltration path out of the page.'
 	}

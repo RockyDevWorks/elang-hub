@@ -106,15 +106,47 @@ function ratio(
 }
 
 /**
- * Strip HTML comments before matching.
+ * Remove every region delimited by `open` and `close`.
  *
- * A comment that quotes a class name or a colour literal would
- * otherwise satisfy a pair's pattern after the class it actually
- * guards was renamed — the checker would read the prose instead of
- * the markup, and the guard would stop guarding.
+ * An unterminated region runs to the end of the input, so an opening
+ * delimiter never survives the scan. A regular expression would not
+ * give that guarantee: a pattern matching both delimiters can leave
+ * the opening one behind when the input is unbalanced, and a
+ * half-removed delimiter is worse than no removal at all — the guard
+ * would silently stop guarding the thing it was written to protect.
+ */
+function scanDelimited(source: string, open: string, close: string): string {
+	const kept: string[] = [];
+	let rest = source;
+	for (;;) {
+		const start = rest.indexOf(open);
+		if (start === -1) {
+			kept.push(rest);
+			return kept.join('');
+		}
+		kept.push(rest.slice(0, start));
+		const end = rest.indexOf(close, start + open.length);
+		if (end === -1) {
+			return kept.join('');
+		}
+		rest = rest.slice(end + close.length);
+	}
+}
+
+/**
+ * Strip comments before matching.
+ *
+ * A comment that quotes a class name, a selector or a colour literal
+ * would otherwise satisfy a pair's pattern after the thing it
+ * actually guards was renamed — the checker would read the prose
+ * instead of the markup, and the guard would stop guarding.
  */
 function stripComments(source: string): string {
-	return source.replace(/<!--[\s\S]*?-->/g, '');
+	// HTML comments: `<!--` ... `-->`
+	let out = scanDelimited(source, '<' + '!--', '--' + '>');
+	// CSS comments: `/*` ... `*/`
+	out = scanDelimited(out, '/*', '*/');
+	return out;
 }
 
 const PAIRS: readonly Pair[] = [
@@ -546,4 +578,31 @@ describe('contrast guard (H0504)', () => {
 			);
 		});
 	}
+});
+
+describe('comment scanner', () => {
+	it('removes a complete comment and keeps the surrounding markup', () => {
+		expect(stripComments('<p class="x">a<!-- note -->b</p>')).toBe('<p class="x">ab</p>');
+	});
+
+	it('removes an unterminated comment through the end of the source', () => {
+		const stripped = stripComments('<p class="x">a<!-- note');
+		expect(stripped).toBe('<p class="x">a');
+		expect(stripped).not.toContain('<!');
+	});
+
+	it('removes CSS comments as well as HTML comments', () => {
+		expect(stripComments('<style>/* note */ .a { color: red; }</style>')).toBe(
+			'<style> .a { color: red; }</style>'
+		);
+	});
+
+	it('removes every comment in a source that has several', () => {
+		expect(stripComments('<!-- one -->kept<!-- two -->more<!-- three')).toBe('keptmore');
+	});
+
+	it('leaves a source with no comments untouched', () => {
+		const source = '<p class="x">nothing to strip</p>';
+		expect(stripComments(source)).toBe(source);
+	});
 });

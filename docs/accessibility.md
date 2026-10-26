@@ -287,9 +287,16 @@ The guard itself was strengthened twice so these pairs cannot rot:
 - A pair that supplies a `foreground` override now asserts its `find`
   pattern still matches the source. Without that, an overridden pair kept
   passing after the class it guarded was renamed.
-- HTML comments are stripped before matching. A comment quoting a class
-  name satisfied the pattern after the class itself was renamed — the
-  checker was reading the prose instead of the markup.
+- Comments are stripped before matching. The stripper is an explicit
+  delimiter scan (`scanDelimited` in `contrast.test.ts`) rather than a
+  regular expression — a regex that matches `<!--` and `-->` can leave
+  the opening delimiter behind in an unbalanced input, which CodeQL
+  flags as `js/incomplete-sanitization` and which is a real failure mode
+  for the guard itself. The same scanner also strips CSS `/* */`
+  comments, which carry the identical poisoning risk. Five contract
+  tests cover the scanner (complete comment, unterminated comment, CSS
+  comment, multiple comments, no comments) so the unterminated-comment
+  branch is exercised on every run.
 
 Both changes were proven by injection: reverting the drop-zone boundary
 to `border-gray-300` and renaming `text-gray-600` each fail the suite
@@ -303,8 +310,8 @@ implementation that the release page does not mount. The colour contract
 is enforced for them so they cannot drift, but axe does not spend a case
 on a component no route renders.
 
-| File                                     | Change                                                                                                                                                 |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `src/lib/components/FileDropZone.svelte` | Drop-zone boundary darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                           |
-| `src/lib/components/UploadStatus.svelte` | Cancel/Reset button borders darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                  |
-| `src/lib/components/contrast.test.ts`    | 17 pairs added for the two H01 components; `foreground`-override pairs now assert their pattern still matches; HTML comments stripped before matching. |
+| File                                     | Change                                                                                                                                                                                                                                                          |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/components/FileDropZone.svelte` | Drop-zone boundary darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                                                                                                                                    |
+| `src/lib/components/UploadStatus.svelte` | Cancel/Reset button borders darkened from `gray-300` (1.47:1) to `gray-500` (4.83:1).                                                                                                                                                                           |
+| `src/lib/components/contrast.test.ts`    | 17 pairs added for the two H01 components; `foreground`-override pairs now assert their pattern still matches; comment stripping rewritten as an explicit delimiter scan (HTML + CSS) with five contract tests, addressing CodeQL `js/incomplete-sanitization`. |

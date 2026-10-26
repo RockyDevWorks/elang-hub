@@ -433,4 +433,47 @@ describe('PhonemePageController', () => {
 		(controller.state as PhonemePageError).replace();
 		expect(controller.state.phase).toBe('idle');
 	});
+
+	it('a read failure that races a cancel lands in idle (signal-aborted branch)', async () => {
+		// The select() pipeline catches read failures. When the
+		// failure happens AND the signal is already aborted (because
+		// cancel() ran before the read rejection landed), the
+		// controller emits the idle state instead of the error
+		// state. This is the cancellation-wins invariant.
+		const controller = new PhonemePageController();
+		const file = makeBrokenFile('broken.elang', 100);
+		const { request } = makeRequest(async () => viewOutcome(successView()));
+		const promise = controller.select(file as unknown as File, request);
+		// Cancel synchronously, before the read's rejection microtask
+		// lands. The select() promise still awaits its internal
+		// catch, which observes `controller.signal.aborted === true`
+		// and emits IDLE instead of ERROR.
+		controller.cancel();
+		await promise;
+		expect(controller.state.phase).toBe('idle');
+	});
+
+	it('a cancel that races the read pipeline (during progress) lands in idle', async () => {
+		// The select() pipeline checks `controller.signal.aborted`
+		// after the read completes. When cancel() runs from inside
+		// the progress subscriber (between chunk reads), the read
+		// still completes normally — the abort only short-circuits
+		// the post-read check, which emits IDLE instead of the
+		// successful view.
+		const controller = new PhonemePageController();
+		const file = makeFile('cancel.elang', new Uint8Array([1, 2, 3, 4, 5]));
+		let cancelled = false;
+		controller.subscribe((s) => {
+			if (s.phase === 'validating' && s.progress > 0 && !cancelled) {
+				cancelled = true;
+				controller.cancel();
+			}
+		});
+		const { request } = makeRequest(async () => viewOutcome(successView()));
+		await controller.select(file as unknown as File, request);
+		// The request was never called because cancel aborted the
+		// pipeline before the request ran.
+		expect(cancelled).toBe(true);
+		expect(controller.state.phase).toBe('idle');
+	});
 });

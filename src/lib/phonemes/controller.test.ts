@@ -15,7 +15,7 @@
  * Vitest's `node` environment without DOM polyfills.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PhonemePageController } from './controller';
 import type { PhonemePageError, PhonemePageView } from './controller';
 import type { PhonemeRequestOutcome, RequestPhonemeView } from './index';
@@ -303,6 +303,69 @@ describe('PhonemePageController', () => {
 		await promise;
 
 		expect(controller.state.phase).toBe('idle');
+	});
+
+	it.each(['cancel', 'reset'] as const)(
+		'%s during file reading stops the stream',
+		async (action) => {
+			const controller = new PhonemePageController();
+			const cancel = vi.fn();
+			let emitted = 0;
+			const pull = vi.fn((source: ReadableStreamDefaultController<Uint8Array>) => {
+				if (emitted++ < 3) source.enqueue(new Uint8Array([1]));
+				else source.close();
+			});
+			const stream = new ReadableStream({ pull, cancel }, { highWaterMark: 0 });
+			const file: MinimalFile = { name: 'cancel.elang', size: 3, stream: () => stream };
+			controller.subscribe((state) => {
+				if (state.phase === 'validating' && state.progress > 0) controller[action]();
+			});
+			const { request, calls } = makeRequest(async () => viewOutcome(successView()));
+
+			await controller.select(file as unknown as File, request);
+
+			expect(cancel).toHaveBeenCalledOnce();
+			expect(pull).toHaveBeenCalledOnce();
+			expect(stream.locked).toBe(false);
+			expect(calls).toHaveLength(0);
+			expect(controller.state.phase).toBe('idle');
+		}
+	);
+
+	it('discards a chunk that arrives after cancellation while a read is pending', async () => {
+		const controller = new PhonemePageController();
+		let source!: ReadableStreamDefaultController<Uint8Array>;
+		const cancel = vi.fn();
+		let reads = 0;
+		const pull = vi.fn(() => {
+			if (++reads > 1) source.close();
+		});
+		const stream = new ReadableStream<Uint8Array>(
+			{
+				start: (value) => {
+					source = value;
+				},
+				pull,
+				cancel
+			},
+			{ highWaterMark: 0 }
+		);
+		const file: MinimalFile = { name: 'slow.elang', size: 2, stream: () => stream };
+		const states: string[] = [];
+		controller.subscribe((state) => states.push(state.phase));
+		const { request, calls } = makeRequest(async () => viewOutcome(successView()));
+		const selected = controller.select(file as unknown as File, request);
+		await flushUntil(() => pull.mock.calls.length > 0);
+
+		controller.cancel();
+		source.enqueue(new Uint8Array([1]));
+		await selected;
+
+		expect(cancel).toHaveBeenCalledOnce();
+		expect(pull).toHaveBeenCalledOnce();
+		expect(stream.locked).toBe(false);
+		expect(calls).toHaveLength(0);
+		expect(states).toEqual(['validating', 'idle']);
 	});
 
 	it('a slow run is superseded by a faster replacement run (race-safe)', async () => {

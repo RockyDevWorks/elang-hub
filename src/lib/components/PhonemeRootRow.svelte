@@ -7,9 +7,9 @@
 	let { root }: { root: RootView } = $props();
 </script>
 
-/** * One validated root phoneme (H0404, H0405). * * Renders the IPA + romanization for the root,
+<!-- * One validated root phoneme (H0404, H0405). * * Renders the IPA + romanization for the root,
 the optional * `when` block, and every allophone under it (H0404). An empty * allophone list renders
-a deliberate placeholder so the user * can distinguish "no allophones" from "missing allophones". */
+a deliberate placeholder so the user * can distinguish "no allophones" from "missing allophones". -->
 
 <li class="root">
 	<div class="root-header">

@@ -259,12 +259,16 @@ async function readFileWithProgress(
 	const chunks: Uint8Array[] = [];
 	let read = 0;
 	try {
-		while (true) {
+		while (!signal.aborted) {
 			const { value, done } = await reader.read();
-			if (done) break;
+			if (signal.aborted || done) break;
 			chunks.push(value);
 			read += value.byteLength;
 			onProgress(Math.min(100, Math.round((read / totalBytes) * 100)));
+		}
+		if (signal.aborted) {
+			void reader.cancel().catch(() => {});
+			throw new DOMException('Aborted', 'AbortError');
 		}
 	} finally {
 		try {

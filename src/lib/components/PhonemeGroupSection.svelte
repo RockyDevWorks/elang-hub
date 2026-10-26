@@ -7,11 +7,11 @@
 	const headingId = $derived(id);
 </script>
 
-/** * One validated phoneme group (H0402, H0403). * * Groups are sorted in canonical order
+<!-- * One validated phoneme group (H0402, H0403). * * Groups are sorted in canonical order
 (consonants → vowels → * custom-ASCII) by the view layer (H0307). Reserved groups are * labelled
 with the canonical plural; custom groups are * title-cased from the validated slug. Empty roots
 render a * deliberate placeholder so the user can tell "no phonemes in * this group" apart from a
-missing group entirely. */
+missing group entirely. -->
 
 <section aria-labelledby={headingId} class="group">
 	<h2 id={headingId} class="group-title">{labelForGroupKind(group.kind)}</h2>

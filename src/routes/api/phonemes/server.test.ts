@@ -60,6 +60,23 @@ function makeRequest(bytes: Uint8Array, headers: Record<string, string> = {}): R
 	return new Request('http://localhost/api/phonemes', init);
 }
 
+function makeStreamRequest(chunks: Uint8Array[], headers: Record<string, string> = {}) {
+	let index = 0;
+	const cancel = vi.fn();
+	const pull = vi.fn((source: ReadableStreamDefaultController<Uint8Array>) => {
+		if (index === chunks.length) source.close();
+		else source.enqueue(chunks[index++]);
+	});
+	const body = new ReadableStream({ pull, cancel }, { highWaterMark: 0 });
+	const init: RequestInit & { duplex: 'half' } = {
+		method: 'POST',
+		body,
+		duplex: 'half',
+		headers: { 'content-type': 'application/octet-stream', ...headers }
+	};
+	return { request: new Request('http://localhost/api/phonemes', init), body, pull, cancel };
+}
+
 function makeSuccessResult(): SdkResult {
 	return {
 		ok: true,
@@ -135,6 +152,30 @@ describe('POST /api/phonemes', () => {
 		expect(Array.from(received)).toEqual(Array.from(payload));
 	});
 
+	it('forwards multiple chunks in order, including empty chunks', async () => {
+		validateMock.mockResolvedValue(makeSuccessResult());
+		const { request, body, cancel } = makeStreamRequest([
+			new Uint8Array(),
+			new Uint8Array([10, 20]),
+			new Uint8Array(),
+			new Uint8Array([30, 40])
+		]);
+
+		const response = await POST({ request } as never);
+
+		expect(response.status).toBe(200);
+		expect(validateMock).toHaveBeenCalledExactlyOnceWith(new Uint8Array([10, 20, 30, 40]));
+		expect(cancel).not.toHaveBeenCalled();
+		expect(body.locked).toBe(false);
+	});
+
+	it('returns 400 when the request has no body stream', async () => {
+		const request = new Request('http://localhost/api/phonemes', { method: 'POST' });
+
+		await expect(POST({ request } as never)).rejects.toMatchObject({ status: 400 });
+		expect(validateMock).not.toHaveBeenCalled();
+	});
+
 	it('returns 400 on an empty body', async () => {
 		// SvelteKit's `error()` throws an `HttpError` object in the
 		// request handler. The SvelteKit framework would convert it
@@ -180,6 +221,32 @@ describe('POST /api/phonemes', () => {
 		expect(validateMock).not.toHaveBeenCalled();
 	});
 
+	it.each<Record<string, string>>([{}, { 'content-length': '1' }])(
+		'cancels immediately when streamed bytes exceed the cap with headers %j',
+		async (headers) => {
+			const { request, body, pull, cancel } = makeStreamRequest(
+				[new Uint8Array(MAX_SDK_BODY_BYTES - 1), new Uint8Array(2), new Uint8Array(1)],
+				headers
+			);
+
+			const response = await POST({ request } as never);
+
+			expect(response.status).toBe(413);
+			expect(await response.json()).toEqual({
+				ok: false,
+				stage: 'inspect',
+				code: 'request_too_large',
+				message: `Request body is ${MAX_SDK_BODY_BYTES + 1} bytes; the SDK adapter limit is ${MAX_SDK_BODY_BYTES}.`,
+				path: 'request.body',
+				diagnostics: []
+			});
+			expect(cancel).toHaveBeenCalledOnce();
+			expect(pull).toHaveBeenCalledTimes(2);
+			expect(body.locked).toBe(false);
+			expect(validateMock).not.toHaveBeenCalled();
+		}
+	);
+
 	it('returns 503 when SDK_SERVICE_URL is not configured', async () => {
 		envMock.SDK_SERVICE_URL = undefined;
 
@@ -191,6 +258,17 @@ describe('POST /api/phonemes', () => {
 			expect(err.status).toBe(503);
 			expect(err.body?.message).toContain('not configured');
 		}
+		expect(validateMock).not.toHaveBeenCalled();
+	});
+
+	it('resolves the service URL before reading any body bytes', async () => {
+		envMock.SDK_SERVICE_URL = undefined;
+		const { request, pull } = makeStreamRequest([new Uint8Array([1])]);
+
+		await expect(POST({ request } as never)).rejects.toMatchObject({ status: 503 });
+
+		expect(pull).not.toHaveBeenCalled();
+		expect(request.bodyUsed).toBe(false);
 		expect(validateMock).not.toHaveBeenCalled();
 	});
 
@@ -222,10 +300,16 @@ describe('POST /api/phonemes', () => {
 
 	it('accepts a body right up to the cap (boundary)', async () => {
 		validateMock.mockResolvedValue(makeSuccessResult());
-		const atCap = new Uint8Array(MAX_SDK_BODY_BYTES);
+		const { request } = makeStreamRequest([
+			new Uint8Array(MAX_SDK_BODY_BYTES - 1),
+			new Uint8Array([42])
+		]);
 
-		const response = await POST({ request: makeRequest(atCap) } as never);
+		const response = await POST({ request } as never);
 		expect(response.status).toBe(200);
 		expect(validateMock).toHaveBeenCalledOnce();
+		const received = validateMock.mock.calls[0][0] as Uint8Array;
+		expect(received.byteLength).toBe(MAX_SDK_BODY_BYTES);
+		expect(received[MAX_SDK_BODY_BYTES - 1]).toBe(42);
 	});
 });

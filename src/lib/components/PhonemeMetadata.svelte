@@ -5,11 +5,11 @@
 	let { pkg, phonemeResourcePath }: { pkg: PackageView; phonemeResourcePath: string } = $props();
 </script>
 
-/** * Package metadata header (H0401, H0302). * * Shows the validated language name, identifier,
+<!-- * Package metadata header (H0401, H0302). * * Shows the validated language name, identifier,
 language * version, spec/container versions, and the EPF-manifest-derived * phoneme resource path.
 The `description` placeholder is * rendered when the package omits it; no field is invented. * * The
 package view deliberately has no `verifiedBy`, `author`, * `signer`, `publisher`, or `trusted` field
-— integrity is not * authorship (H0302). The header does not invent any of those. */
+— integrity is not * authorship (H0302). The header does not invent any of those. -->
 
 <header class="metadata" aria-labelledby="language-name">
 	<h1 id="language-name" class="language-name">{pkg.name}</h1>

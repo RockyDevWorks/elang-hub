@@ -4,11 +4,11 @@
 	let { diagnostics }: { diagnostics: readonly SdkDiagnostic[] } = $props();
 </script>
 
-/** * Optional SDK advisory list (H0405). * * The SDK may emit advisories that did not block success
+<!-- * Optional SDK advisory list (H0405). * * The SDK may emit advisories that did not block success
 — e.g. * a deprecated feature in the ELD, a hint about a future spec * revision. The page renders
 them as a small list so the user * can see them without treating them as failures. * * If the SDK
 reported no diagnostics, this component renders * nothing at all (no empty-state placeholder —
-silence is the * correct answer when there is nothing to say). */
+silence is the * correct answer when there is nothing to say). -->
 
 {#if diagnostics.length > 0}
 	<aside class="diagnostics" aria-label="Validation advisories">

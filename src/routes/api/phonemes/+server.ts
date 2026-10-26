@@ -59,50 +59,63 @@ function envelope(result: SdkResult): { status: 200; body: SdkResult } {
 	return { status: 200, body: result };
 }
 
+function requestTooLarge(byteLength: number): Response {
+	// Mirror the SDK's shape so the page sees one error vocabulary.
+	return json(
+		{
+			ok: false,
+			stage: 'inspect',
+			code: 'request_too_large',
+			message: `Request body is ${byteLength} bytes; the SDK adapter limit is ${MAX_SDK_BODY_BYTES}.`,
+			path: 'request.body',
+			diagnostics: []
+		} satisfies SdkResult,
+		{ status: 413 }
+	);
+}
+
 /**
  * POST /api/phonemes — accept opaque package bytes, return the SDK
- * verdict. The body is read fully (the 16 MiB cap is enforced before
- * the read crosses the SDK boundary) and forwarded as `Uint8Array`
+ * verdict. The body is read incrementally with a 16 MiB cap enforced
+ * while reading and forwarded as `Uint8Array`
  * so the SDK client can compute SHA-256s if it needs to.
  */
 export const POST: RequestHandler = async ({ request }) => {
 	const contentLength = Number(request.headers.get('content-length') ?? '0');
 	if (Number.isFinite(contentLength) && contentLength > MAX_SDK_BODY_BYTES) {
-		// Mirror the SDK's own `request_too_large` shape so the page
-		// mapper sees one error vocabulary regardless of which
-		// boundary caught the cap.
-		return json(
-			{
-				ok: false,
-				stage: 'inspect',
-				code: 'request_too_large',
-				message: `Request body is ${contentLength} bytes; the SDK adapter limit is ${MAX_SDK_BODY_BYTES}.`,
-				path: 'request.body',
-				diagnostics: []
-			} satisfies SdkResult,
-			{ status: 413 }
-		);
-	}
-
-	const bytes = new Uint8Array(await request.arrayBuffer());
-	if (bytes.byteLength === 0) {
-		throw error(400, { message: 'Request body must contain package bytes.' });
-	}
-	if (bytes.byteLength > MAX_SDK_BODY_BYTES) {
-		return json(
-			{
-				ok: false,
-				stage: 'inspect',
-				code: 'request_too_large',
-				message: `Request body is ${bytes.byteLength} bytes; the SDK adapter limit is ${MAX_SDK_BODY_BYTES}.`,
-				path: 'request.body',
-				diagnostics: []
-			} satisfies SdkResult,
-			{ status: 413 }
-		);
+		return requestTooLarge(contentLength);
 	}
 
 	const serviceUrl = resolveServiceUrl();
+	const chunks: Uint8Array[] = [];
+	let totalBytes = 0;
+	const reader = request.body?.getReader();
+	if (reader) {
+		try {
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				totalBytes += value.byteLength;
+				if (totalBytes > MAX_SDK_BODY_BYTES) {
+					void reader.cancel().catch(() => {});
+					return requestTooLarge(totalBytes);
+				}
+				chunks.push(value);
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
+	if (totalBytes === 0) {
+		throw error(400, { message: 'Request body must contain package bytes.' });
+	}
+	const bytes = new Uint8Array(totalBytes);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+
 	const client = new SdkClient({ serviceUrl });
 	const result = await client.validate(bytes);
 	const { status, body } = envelope(result);

@@ -11,12 +11,12 @@
 	const groups = $derived(view.view.inventory.groups);
 </script>
 
-/** * Top-level phoneme viewer (H0401–H0405). * * Renders the validated `PhonemeView`: * * - package
+<!-- * Top-level phoneme viewer (H0401–H0405). * * Renders the validated `PhonemeView`: * * - package
 metadata (H0401) * - inventory summary (H0404 — every validated phoneme) * - in-page nav of group
 sections (H0407) * - one `PhonemeGroupSection` per group (H0402, H0403) * - SDK advisories (H0405) *
 - skip link for keyboard users (H0407) * * The viewer renders only what the SDK emitted. Empty
 states * are deliberate placeholders; positions in a chart that the * SDK did not define are NOT
-invented (H0304). */
+invented (H0304). -->
 
 <a class="skip-link" href="#inventory">Skip to inventory</a>
 <article class="phoneme-viewer" aria-labelledby="language-name">

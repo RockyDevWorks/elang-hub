@@ -6,9 +6,9 @@
 	let { allophone }: { allophone: AllophoneView } = $props();
 </script>
 
-/** * One validated allophone (H0404, H0405). * * Renders the IPA identifier with the romanization +
+<!-- * One validated allophone (H0404, H0405). * * Renders the IPA identifier with the romanization +
 roman-kind * label, and the optional `when` block. The IPA string is set * verbatim — the SDK
-contract preserves it byte-exactly (H0303). */
+contract preserves it byte-exactly (H0303). -->
 
 <li class="allophone">
 	<span class="ipa" lang="und-fonipa">{allophone.ipa}</span>

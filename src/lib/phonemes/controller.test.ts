@@ -22,82 +22,12 @@ import type { PhonemeRequestOutcome, RequestPhonemeView } from './index';
 import { httpErrorOutcome, sdkErrorOutcome, transportErrorOutcome, viewOutcome } from './index';
 import type { PhonemeViewResult } from '../view';
 import { PHONEME_VIEW_EXTRACTION_FAILED } from '../view';
-
-/* ------------------------------------------------------------------ */
-/* Minimal File / Blob stand-in                                         */
-/* ------------------------------------------------------------------ */
-
-interface MinimalFile {
-	readonly name: string;
-	readonly size: number;
-	readonly stream: () => ReadableStream<Uint8Array>;
-}
-
-function makeFile(name: string, bytes: Uint8Array): MinimalFile {
-	const total = bytes.byteLength;
-	let emitted = 0;
-	const stream = () =>
-		new ReadableStream<Uint8Array>({
-			pull(controller) {
-				if (emitted >= total) {
-					controller.close();
-					return;
-				}
-				controller.enqueue(bytes);
-				emitted = total;
-			},
-			cancel() {
-				emitted = total;
-			}
-		});
-	return { name, size: total, stream };
-}
-
-/** A file whose `stream()` immediately errors — exercises the read catch. */
-function makeBrokenFile(name: string, size: number): MinimalFile {
-	const stream = () =>
-		new ReadableStream<Uint8Array>({
-			pull(controller) {
-				controller.error(new Error('disk error'));
-			},
-			cancel() {
-				/* no-op */
-			}
-		});
-	return { name, size, stream };
-}
+import { makeBrokenFile, makeFile, successView } from './test-helpers';
+import type { MinimalFile } from './test-helpers';
 
 /* ------------------------------------------------------------------ */
 /* Outcome builders                                                    */
 /* ------------------------------------------------------------------ */
-
-function successView(): PhonemeViewResult {
-	return {
-		ok: true,
-		view: Object.freeze({
-			package: {
-				identifier: 'urn:elang:language:test:test:1.0.0',
-				namespace: 'test',
-				languageName: 'test',
-				languageVersion: '1.0.0',
-				name: 'Test',
-				description: null,
-				specVersions: Object.freeze({
-					specVersion: '0.0.1-1',
-					binaryContainerVersion: '0.1.0'
-				})
-			},
-			phonemeResourcePath: 'Linguistics/phonemes.eld',
-			inventory: Object.freeze({
-				groups: [],
-				rootCount: 0,
-				allophoneCount: 0,
-				isEmpty: true
-			}),
-			diagnostics: []
-		})
-	};
-}
 
 function extractionFailure(): PhonemeViewResult {
 	return {

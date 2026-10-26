@@ -35,36 +35,7 @@ import {
 } from '$lib/phonemes';
 import type { PhonemeViewResult } from '$lib/view';
 import { PHONEME_VIEW_EXTRACTION_FAILED } from '$lib/view';
-
-/* ------------------------------------------------------------------ */
-/* Minimal File / Blob stand-in (mirrors controller.test.ts shape)   */
-/* ------------------------------------------------------------------ */
-
-interface MinimalFile {
-	readonly name: string;
-	readonly size: number;
-	readonly stream: () => ReadableStream<Uint8Array>;
-}
-
-function makeFile(name: string, bytes: Uint8Array): MinimalFile {
-	const total = bytes.byteLength;
-	let emitted = 0;
-	const stream = () =>
-		new ReadableStream<Uint8Array>({
-			pull(controller) {
-				if (emitted >= total) {
-					controller.close();
-					return;
-				}
-				controller.enqueue(bytes);
-				emitted = total;
-			},
-			cancel() {
-				emitted = total;
-			}
-		});
-	return { name, size: total, stream };
-}
+import { makeFile, type MinimalFile } from '$lib/phonemes/test-helpers';
 
 /* ------------------------------------------------------------------ */
 /* Outcome fixtures                                                   */

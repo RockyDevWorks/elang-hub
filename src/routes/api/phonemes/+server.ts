@@ -29,6 +29,8 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { SdkClient, MAX_SDK_BODY_BYTES, type SdkResult } from '$lib/sdk';
 
+const SLASH_CHAR_CODE = 47;
+
 /**
  * Resolve the SDK service URL from the runtime environment.
  *
@@ -45,7 +47,18 @@ function resolveServiceUrl(): string {
 			message: 'The validation service URL is not configured on this deployment.'
 		});
 	}
-	return url.replace(/\/+$/, '');
+	// Strip trailing slashes with an explicit scan rather than a
+	// regex. `/\/+$/` is quadratic on hostile input: the `+`
+	// backtracks at every start offset, so a URL like "//////x"
+	// costs O(n^2). The SDK service URL is deployment
+	// configuration, but it is still environment input and the
+	// endpoint is public — no reason to leave a super-linear
+	// pattern on the request path.
+	let end = url.length;
+	while (end > 0 && url.charCodeAt(end - 1) === SLASH_CHAR_CODE) {
+		end--;
+	}
+	return url.slice(0, end);
 }
 
 /**

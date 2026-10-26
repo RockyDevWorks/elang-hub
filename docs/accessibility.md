@@ -37,12 +37,14 @@ selector in the message — a violation is a defect, not a warning.
 Ten axe cases run: one per component, plus an empty-inventory viewer and a
 nested-condition tree.
 
-### Rules deliberately excluded
+### Rule coverage and exclusions
 
-| Rule                                         | Why it is excluded                                                                              | How it is covered instead                                                                           |
+Only `color-contrast` is excluded from the axe checks.
+
+| Rule                                         | axe coverage / rationale                                                                         | Additional coverage                                                                                 |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `color-contrast`                             | Needs layout and paint; happy-dom implements neither, so axe cannot compute a ratio.            | `contrast.test.ts` computes the ratios from the source CSS — see §5.                                |
-| `aria-allowed-attr`, `aria-valid-attr-value` | happy-dom's ARIA reflection is partial, which makes results unreliable rather than informative. | The ARIA attributes that matter are asserted directly in the keyboard/screen-reader suite — see §4. |
+| `aria-allowed-attr`, `aria-valid-attr-value` | Included in the axe checks.                                                                     | The keyboard/screen-reader suite also asserts ARIA attributes directly — see §4.                     |
 
 ### The exclusion is not a blind spot
 

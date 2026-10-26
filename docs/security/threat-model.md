@@ -91,11 +91,14 @@ must bound the input bytes itself.
   body cap). A `Content-Length` header above the cap is also
   short-circuited before the body stream is opened.
 - **Wall-clock timeout (30 s).** `composeAbortSignal` fires
-  regardless of caller cancellation. The audit's worst-case figure
-  (`docs/security-limits.md:339-347`, ~16 s for the 6 → 8 GiB
-  ceiling case) sits well under the timeout; in practice the
-  Hub-bound 16 MiB selection decompresses to at most ~520 MiB
-  (16 MiB × 32,700:1 ceiling ratio), well inside the 30 s budget.
+  regardless of caller cancellation, bounding the Hub's wait for
+  the SDK response. It does not guarantee SDK processing completes
+  within that time.
+- **SDK decompression limits.** A Hub-bound 16 MiB selection can
+  still reach the SDK's 1 GiB per-resource and 8 GiB aggregate
+  decompression ceilings, with a 128 MiB window ceiling. The
+  observed ~32,700:1 expansion ratio is not an enforced limit and
+  cannot establish a decompressed-size or runtime bound.
 - **No archive-level ceiling on the read path.** The SDK has no
   total-archive-byte cap (`MAX_COMPRESSED_ARCHIVE_BYTES` is
   writer-side only — `docs/security-limits.md:47`, open task

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Upload } from '@lucide/svelte';
 	import { UPLOAD_DROP_ZONE_LABEL, UPLOAD_PICKER_LABEL } from '$lib/phonemes';
+	import { ACCEPT_ATTRIBUTE } from '$lib/upload/limits';
 
 	let { onfiles }: { onfiles: (files: File[] | null) => void } = $props();
 	let dragging = $state(false);
@@ -60,7 +61,7 @@
 	<input
 		bind:this={fileInput}
 		type="file"
-		accept=".elang,application/octet-stream"
+		accept={ACCEPT_ATTRIBUTE}
 		class="sr-only"
 		onchange={handleChange}
 	/>

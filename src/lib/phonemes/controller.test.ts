@@ -594,3 +594,64 @@ describe('PhonemePageController', () => {
 		expect(controller.state.phase).toBe('view');
 	});
 });
+
+describe('PhonemePageController client-side upload cap (H0503)', () => {
+	it('rejects an oversized selection without reading any bytes', async () => {
+		// A 17 MiB selection would, without the cap, buffer 17 MiB
+		// into browser memory before the page could complain. The
+		// cap fires before `readFileWithProgress` is even called,
+		// so the stub `stream()` (which would throw) is never
+		// touched.
+		const controller = new PhonemePageController();
+		const oversized: MinimalFile = {
+			name: 'huge.elang',
+			size: 17 * 1024 * 1024,
+			stream: () => {
+				throw new Error('stream should not be called for an oversized file');
+			}
+		};
+		let requested = false;
+		const request = vi.fn(async () => {
+			requested = true;
+			return viewOutcome(successView());
+		});
+		await controller.select(oversized as unknown as File, request);
+		expect(requested).toBe(false);
+		const state = controller.state;
+		expect(state.phase).toBe('error');
+		if (state.phase === 'error') {
+			expect(state.error.title).toMatch(/too large/i);
+			expect(state.error.message).toContain('17.0 MiB');
+		}
+	});
+
+	it('accepts a file exactly at the cap', async () => {
+		const controller = new PhonemePageController();
+		const atCap = makeFile('at-cap.elang', new Uint8Array([1, 2, 3]));
+		(atCap as { size: number }).size = 16 * 1024 * 1024;
+		const { request } = makeRequest(async () => viewOutcome(successView()));
+		await controller.select(atCap as unknown as File, request);
+		expect(controller.state.phase).toBe('view');
+	});
+
+	it('accepts a file one byte over the cap (regression boundary)', async () => {
+		const controller = new PhonemePageController();
+		const overByOne: MinimalFile = {
+			name: 'over.elang',
+			size: 16 * 1024 * 1024 + 1,
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					pull(c) {
+						c.close();
+					},
+					cancel() {
+						/* no-op */
+					}
+				})
+		};
+		const request = vi.fn(async () => viewOutcome(successView()));
+		await controller.select(overByOne as unknown as File, request);
+		expect(controller.state.phase).toBe('error');
+		expect(request).not.toHaveBeenCalled();
+	});
+});

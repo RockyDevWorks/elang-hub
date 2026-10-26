@@ -1,0 +1,20 @@
+# CodeRabbit configuration for ELANG Hub.
+#
+# By default CodeRabbit only auto-reviews PRs that target the
+# repository's default branch (`main`). The Hub workflow lands
+# work on `release/0.1.0` first and only merges release/0.1.0 into
+# main at v0.1.0 ship time — without this override every release-
+# branch PR gets the message
+#   "Review skipped: reviews are disabled for this base branch"
+# and CodeRabbit never sees the diff.
+#
+# `base_branches` extends the set of reviewed branches; the default
+# branch is always included automatically. Every other knob here is
+# left at the CodeRabbit default so the team can opt-in to
+# additional settings later without a config churn PR.
+
+reviews:
+  auto_review:
+    base_branches:
+      # Match every release/* branch (release/0.1.0, release/0.2.0, …).
+      - 'release/.*'

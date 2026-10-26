@@ -26,14 +26,56 @@ Key constraints:
 - **Styling:** Tailwind CSS
 - **Component library:** shadcn-svelte (accessible, customizable components)
 - **Icons:** Lucide icons
-- **Deployment:** Cloudflare Pages via `@sveltejs/adapter-cloudflare`
+- **Deployment:** Cloudflare Workers via `@sveltejs/adapter-cloudflare`
+
+**Compatibility note:** The emitted static assets remain compatible with Cloudflare Pages.
 
 **Rationale:**
 
 - SvelteKit provides excellent DX, flexible rendering (SSR/SSG/CSR), and strong TypeScript support
 - Tailwind CSS enables rapid UI development with consistent design
 - shadcn-svelte delivers accessible, well-tested components without heavy framework lock-in
-- Cloudflare Pages offers fast edge delivery, zero-config deployment, and generous free tier
+- Cloudflare Workers provides global edge execution for the SvelteKit frontend via the adapter’s Workers entry point
+
+### Pinned major versions
+
+The Hub pins its framework majors explicitly. The SvelteKit 3 and
+Tailwind 4 upgrades were tracked in [issue #20](https://github.com/RockyDevWorks/elang-hub/issues/20)
+and ship in v0.1.0.
+
+| Package                             | Pinned major | Version at v0.1.0 |
+| ----------------------------------- | ------------ | ----------------- |
+| `@sveltejs/kit`                     | 3            | `^3.1.0`          |
+| `@sveltejs/adapter-cloudflare`      | 8            | `^8.0.1`          |
+| `@sveltejs/vite-plugin-svelte`      | 7            | `^7.3.1`          |
+| `svelte`                            | 5            | `^5.57.1`         |
+| `vite`                              | 8            | `^8.0.12`         |
+| `tailwindcss` / `@tailwindcss/vite` | 4            | `^4.3.3`          |
+| `vitest`                            | 4            | `^4.1.12`         |
+| `typescript`                        | 6            | `^6.0.3`          |
+
+**Rationale for pinning:**
+
+- **SvelteKit 3 and Tailwind 4 together.** SvelteKit 3 changes the
+  defaults for `request.json`, `cookies` and `error`, and Tailwind 4
+  replaces `tailwind.config.js` with the `@theme` directive in CSS.
+  Migrating both in one change reduces churn, because the Tailwind 4
+  configuration format and the SvelteKit 3 plugin surface overlap.
+- **`adapter-cloudflare` 8 in lockstep.** The adapter major must match
+  the kit major; 7.x is built against kit 2.x and would break at deploy
+  time, not at build time.
+- **No `overrides` block.** The advisory that originally forced a pin
+  (`undici`, pulled in by `miniflare` via `wrangler`) is cleared at the
+  source: `wrangler` is declared as a direct devDependency at `^4.153.0`,
+  which resolves `miniflare` 5.20261023 and `undici` 7.30.1 naturally.
+  The current locked dependency tree passes
+  `npm audit --audit-level=moderate` without an `overrides` block.
+  Dependencies must be audited whenever they change; a later parent
+  release may reintroduce a vulnerable transitive dependency.
+- **Known non-blocking item.** SvelteKit 3 deprecates the
+  `config.alias` option; the warning is retained rather than silenced,
+  so the deprecation stays visible until the migration to subpath
+  imports is done deliberately.
 
 ### Backend Architecture
 
@@ -57,7 +99,7 @@ Key constraints:
 ```
 User uploads .elang file
     ↓
-Cloudflare Pages (SvelteKit frontend)
+Cloudflare Workers (SvelteKit frontend)
     ↓ HTTP POST /validate
 Fly.io validation API
     ↓ exec `elang validate`
@@ -65,7 +107,7 @@ elang-rs CLI (Rust binary)
     ↓ return validation results + extracted phoneme data
 Fly.io API (JSON response)
     ↓
-Cloudflare Pages renders phoneme viewer
+Cloudflare Workers renders phoneme viewer
 ```
 
 ### SDK Integration Policy
@@ -82,7 +124,7 @@ Cloudflare Pages renders phoneme viewer
 - Clear separation of concerns: UI and validation logic are independently deployable
 - Leverages authoritative ELANG validation without forking or reimplementing
 - SvelteKit + Tailwind + shadcn-svelte = fast UI development with great DX
-- Cloudflare Pages provides excellent global edge performance for static/SSR content
+- Cloudflare Workers provides global edge delivery for static assets and SSR content
 - Fly.io free tier keeps infrastructure costs at zero for v0.1.0
 - Architecture supports future enhancements (caching, rate limiting, multi-region validation)
 
@@ -109,5 +151,17 @@ Cloudflare Pages renders phoneme viewer
 - ELANG Hub Issue #2: [HUB][v0.1.0][H00] Setup & CI
 - `elang-rs` repository: https://github.com/RockyDevWorks/elang-rs
 - SvelteKit documentation: https://svelte.dev/docs/kit
-- Cloudflare Pages documentation: https://developers.cloudflare.com/pages
+- Cloudflare Workers documentation: https://developers.cloudflare.com/workers/
 - Fly.io documentation: https://fly.io/docs
+
+## Amendment history
+
+- **2026-10-26 (v0.1.0).** Added § "Pinned major versions" recording the
+  SvelteKit 3, `adapter-cloudflare` 8, Tailwind 4, Vite 8, Svelte 5,
+  Vitest 4, TypeScript 6 and the rationale for landing both Kit 3 and
+  Tailwind 4 together. Corrected the deployment-target wording from
+  "Cloudflare Pages" to "Cloudflare Workers (static assets
+  Pages-compatible)" to match what `@sveltejs/adapter-cloudflare` 8
+  actually emits and what `docs/operator-guide.md` documents. The
+  `undici` advisory is now cleared by pinning `wrangler ^4.153.0` as a
+  direct devDependency, so the `overrides` block is empty.

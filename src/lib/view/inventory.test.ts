@@ -17,7 +17,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { conditionPayloadToView, narrowInventoryPayload, type InventoryPayload } from './inventory';
+import {
+	conditionPayloadToView,
+	narrowInventoryPayload,
+	type InventoryPayload,
+	type NarrowErrorCode
+} from './inventory';
 import { groupView, orView, predicateView, whenView } from './conditions';
 
 /**
@@ -69,6 +74,29 @@ function withOverride(
 		...base,
 		package: { ...base.package, [field]: value }
 	};
+}
+
+/**
+ * Clone the valid payload, apply `mutate`, narrow, and assert that the
+ * narrow function rejects it with the expected error code. Centralises
+ * the "rejects X" boilerplate (clone → mutate → narrow → assert) that
+ * would otherwise be repeated across every rejection test.
+ *
+ * The mutator receives the cloned payload as `any` so it can substitute
+ * any shape (string for an object, missing field, non-array, etc.) —
+ * the whole point of these tests is to feed the narrow function shapes
+ * it shouldn't see in production.
+ */
+function expectRejection(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	mutate: (broken: any) => void,
+	code: NarrowErrorCode
+): void {
+	const broken = JSON.parse(JSON.stringify(validPayload()));
+	mutate(broken);
+	const r = narrowInventoryPayload(broken);
+	expect(r.ok).toBe(false);
+	if (!r.ok) expect(r.error.code).toBe(code);
 }
 
 describe('narrowInventoryPayload — happy path', () => {
@@ -274,24 +302,18 @@ describe('narrowInventoryPayload — group rejection', () => {
 	});
 
 	it('rejects a group entry that is not a JSON object', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0] = 'not a group object';
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('group_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0] = 'not a group object';
+		}, 'group_invalid');
 	});
 
 	it('rejects a custom group name longer than 32 chars', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups.push({
-			kind: { name: 'a'.repeat(33) },
-			roots: []
-		});
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('group_name_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups.push({
+				kind: { name: 'a'.repeat(33) },
+				roots: []
+			});
+		}, 'group_name_invalid');
 	});
 });
 
@@ -341,21 +363,15 @@ describe('narrowInventoryPayload — root rejection', () => {
 	});
 
 	it('rejects a root entry that is not a JSON object', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0] = 42;
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('root_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0] = 42;
+		}, 'root_invalid');
 	});
 
 	it('rejects a root whose allophones field is not an array', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0].allophones = 'not an array';
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('allophones_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0].allophones = 'not an array';
+		}, 'allophones_invalid');
 	});
 });
 
@@ -399,27 +415,21 @@ describe('narrowInventoryPayload — allophone rejection', () => {
 	});
 
 	it('rejects an allophone entry that is not a JSON object', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0].allophones = ['not an allophone'];
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('allophone_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0].allophones = ['not an allophone'];
+		}, 'allophone_invalid');
 	});
 
 	it('rejects an allophone whose when condition is malformed', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0].allophones = [
-			{
-				ipa: 'ɾ',
-				roman: null,
-				when: { children: [{ kind: 'xor', left: 1, right: 2 }] }
-			}
-		];
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0].allophones = [
+				{
+					ipa: 'ɾ',
+					roman: null,
+					when: { children: [{ kind: 'xor', left: 1, right: 2 }] }
+				}
+			];
+		}, 'condition_invalid');
 	});
 });
 
@@ -739,42 +749,39 @@ describe('narrowInventoryPayload — condition tree rejection', () => {
 	});
 
 	it('rejects a `group` node whose child is not a valid condition node', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0].when = {
-			children: [
-				{
-					kind: 'group',
-					children: [
-						{ kind: 'predicate', predicate: { kind: 'word-position', value: 'initial' } },
-						{ kind: 'xor', left: 1, right: 2 }
-					]
-				}
-			]
-		};
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0].when = {
+				children: [
+					{
+						kind: 'group',
+						children: [
+							{
+								kind: 'predicate',
+								predicate: { kind: 'word-position', value: 'initial' }
+							},
+							{ kind: 'xor', left: 1, right: 2 }
+						]
+					}
+				]
+			};
+		}, 'condition_invalid');
 	});
 
 	it('rejects an `or` node whose right is not a valid condition node', () => {
-		const p = validPayload();
-		const broken = JSON.parse(JSON.stringify(p));
-		broken.inventory.groups[0].roots[0].when = {
-			children: [
-				{
-					kind: 'or',
-					left: {
-						kind: 'predicate',
-						predicate: { kind: 'word-position', value: 'initial' }
-					},
-					right: { kind: 'xor', left: 1, right: 2 }
-				}
-			]
-		};
-		const r = narrowInventoryPayload(broken);
-		expect(r.ok).toBe(false);
-		if (!r.ok) expect(r.error.code).toBe('condition_invalid');
+		expectRejection((broken) => {
+			broken.inventory.groups[0].roots[0].when = {
+				children: [
+					{
+						kind: 'or',
+						left: {
+							kind: 'predicate',
+							predicate: { kind: 'word-position', value: 'initial' }
+						},
+						right: { kind: 'xor', left: 1, right: 2 }
+					}
+				]
+			};
+		}, 'condition_invalid');
 	});
 });
 

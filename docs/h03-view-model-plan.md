@@ -38,7 +38,7 @@ view layer narrows.
 ## Tasks
 
 - [x] **H0301** — Surface the manifest phoneme path through the SDK
-  adapter.
+      adapter.
   - `src/lib/sdk/contract.ts` — add `phonemeResourcePath: string` to
     `SdkValidateResult`.
   - `src/lib/sdk/client.ts` — `parseValidate` enforces the new field.
@@ -46,7 +46,7 @@ view layer narrows.
     existing tests updated; missing-field path now reported as a
     `malformed_response` typed failure (stronger guarantee than before).
 - [x] **H0302** — Map language name, language release, and supported
-  descriptor metadata safely.
+      descriptor metadata safely.
   - `src/lib/view/package.ts` — `PackageView` carries `name`,
     `languageVersion`, `identifier`, `namespace`, `languageName`,
     `description: string | null`, and the spec/container versions the
@@ -65,14 +65,14 @@ view layer narrows.
   - Tests pin precomposed vs decomposed, supplementary-plane IPA, and
     that the comparator handles them deterministically.
 - [x] **H0304** — Stable view model for present phonetic features and
-  classifications without fabricating.
+      classifications without fabricating.
   - The Hub only renders what the SDK returned. There is no
     `phoneticFeature` field on `RootView` or `AllophoneView`; nothing
     is fabricated. `RootView` and `AllophoneView` carry the validated
     IPA, romanization, and optional condition exactly as the SDK
     emitted them.
 - [x] **H0305** — Map allophones and conditions read-only; preserve
-  references.
+      references.
   - `src/lib/view/conditions.ts` — discriminated union over `predicate`
     (leaf), `group` (AND ≥ 2), and `or` (binary OR). Every node carries
     a `displayText` for the common single-string case; the renderer can
@@ -83,7 +83,7 @@ view layer narrows.
   - Tests cover every leaf type, OR-of-OR, group-of-OR, and rejected
     shapes.
 - [x] **H0306** — Map romanization and grouping with explicit
-  absent-data handling.
+      absent-data handling.
   - `src/lib/view/romanization.ts` — `AllophoneRoman` distinguishes
     `explicit`, `inherited` (C-16: allophone with no `roman` inherits
     the parent's exact-case romanization), and `absent` (reserved for
@@ -142,12 +142,12 @@ view layer narrows.
 
 ## Empty states vs errors (H0307)
 
-| Condition                              | Verdict                                  | UI render             |
-| -------------------------------------- | ---------------------------------------- | --------------------- |
-| Valid empty inventory (`groups: []`)   | `{ ok: true, view.inventory.isEmpty }`   | "No phonemes defined" |
-| Valid inventory with groups            | `{ ok: true, view.inventory.isEmpty: false }` | Render the view  |
-| Malformed SDK payload                  | `{ ok: false, code: PHONEME_VIEW_EXTRACTION_FAILED }` | Typed error      |
-| SDK `validate` failure                 | (returned by `SdkClient.validate`)       | H02 error mapping     |
+| Condition                            | Verdict                                               | UI render             |
+| ------------------------------------ | ----------------------------------------------------- | --------------------- |
+| Valid empty inventory (`groups: []`) | `{ ok: true, view.inventory.isEmpty }`                | "No phonemes defined" |
+| Valid inventory with groups          | `{ ok: true, view.inventory.isEmpty: false }`         | Render the view       |
+| Malformed SDK payload                | `{ ok: false, code: PHONEME_VIEW_EXTRACTION_FAILED }` | Typed error           |
+| SDK `validate` failure               | (returned by `SdkClient.validate`)                    | H02 error mapping     |
 
 The Hub NEVER conflates an empty inventory with a processing error.
 

@@ -564,7 +564,12 @@ describe('narrowInventoryPayload — condition tree rejection', () => {
 		const p = validPayload();
 		const broken = JSON.parse(JSON.stringify(p));
 		broken.inventory.groups[0].roots[0].when = {
-			children: [{ kind: 'or', right: { kind: 'predicate', predicate: { kind: 'word-position', value: 'initial' } } }]
+			children: [
+				{
+					kind: 'or',
+					right: { kind: 'predicate', predicate: { kind: 'word-position', value: 'initial' } }
+				}
+			]
 		};
 		const r = narrowInventoryPayload(broken);
 		expect(r.ok).toBe(false);

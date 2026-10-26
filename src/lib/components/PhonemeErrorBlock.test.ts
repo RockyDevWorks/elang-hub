@@ -10,7 +10,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import PhonemeErrorBlock from './PhonemeErrorBlock.svelte';
-import { REPLACE_FILE_LABEL, formatBytes, type PhonemePageErrorInfo } from '$lib/phonemes';
+import {
+	REPLACE_FILE_LABEL,
+	formatBytes,
+	httpErrorOutcome,
+	mapRequestOutcome,
+	type PhonemePageErrorInfo
+} from '$lib/phonemes';
 
 describe('PhonemeErrorBlock', () => {
 	function makeError(overrides: Partial<PhonemePageErrorInfo> = {}): PhonemePageErrorInfo {
@@ -47,12 +53,14 @@ describe('PhonemeErrorBlock', () => {
 		expect(container.textContent).toContain(formatBytes(2048));
 	});
 
-	it('renders the optional detail code when present', () => {
-		const error = makeError({ detail: 'phoneme_inventory_invalid' });
+	it('renders mapped detail as literal text without creating HTML elements', () => {
+		const detail = '<script>alert("x")</script> & \'path\' &lt;';
+		const error = mapRequestOutcome(httpErrorOutcome(500, detail));
 		const { container } = render(PhonemeErrorBlock, {
 			props: { error, fileName: 'broken.elang', fileSize: 1, replace: () => {} }
 		});
-		expect(container.textContent).toContain('phoneme_inventory_invalid');
+		expect(container.querySelector('p.detail code')?.textContent).toBe(detail);
+		expect(container.querySelector('script')).toBeNull();
 	});
 
 	it('does NOT render the detail block when detail is absent', () => {

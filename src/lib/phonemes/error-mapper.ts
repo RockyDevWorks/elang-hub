@@ -11,10 +11,9 @@
  * unrecognised SDK code falls back to a deliberate generic
  * message so the UI never shows raw SDK internals.
  *
- * Defence-in-depth: every string the UI renders is already
- * length-bounded and HTML-escaped (the SDK contract already
- * requires escaped `message` and `path`; this module bounds
- * them further so the page has nothing left to do).
+ * Every string the UI renders is length-bounded. Optional details
+ * have C0 controls and DEL stripped; HTML escaping is left to
+ * Svelte's text interpolation.
  */
 
 import type { HubError } from '../sdk/errors';
@@ -44,9 +43,8 @@ export type PhonemeRequestOutcome =
 	| { readonly kind: 'transport_error'; readonly cause: 'offline' | 'aborted' | 'unknown' };
 
 /**
- * Map a `PhonemeRequestOutcome` to a bounded, escaped
- * `PhonemePageErrorInfo`. The result is safe to render directly:
- * the page does not need to escape it again.
+ * Map a `PhonemeRequestOutcome` to a bounded
+ * `PhonemePageErrorInfo` for rendering via Svelte text interpolation.
  */
 export function mapRequestOutcome(outcome: PhonemeRequestOutcome): PhonemePageErrorInfo {
 	switch (outcome.kind) {
@@ -71,7 +69,7 @@ function mapViewResult(result: PhonemeViewResult): PhonemePageErrorInfo {
 			message: bound('The package validated successfully.', MAX_MESSAGE_LENGTH)
 		};
 	}
-	const detail = result.path ? bound(escape(result.path), MAX_DETAIL_LENGTH) : undefined;
+	const detail = result.path ? bound(stripControls(result.path), MAX_DETAIL_LENGTH) : undefined;
 	return detail
 		? {
 				title: bound('Could not read the validated inventory', MAX_TITLE_LENGTH),
@@ -86,14 +84,14 @@ function mapViewResult(result: PhonemeViewResult): PhonemePageErrorInfo {
 
 function mapHubError(error: HubError): PhonemePageErrorInfo {
 	const title = bound(titleForStage(error.stage), MAX_TITLE_LENGTH);
-	const detail = error.detail ? bound(escape(error.detail), MAX_DETAIL_LENGTH) : undefined;
+	const detail = error.detail ? bound(stripControls(error.detail), MAX_DETAIL_LENGTH) : undefined;
 	return detail
 		? { title, message: bound(error.message, MAX_MESSAGE_LENGTH), detail }
 		: { title, message: bound(error.message, MAX_MESSAGE_LENGTH) };
 }
 
 function mapHttpError(status: number, detail?: string): PhonemePageErrorInfo {
-	const detailBounded = detail ? bound(escape(detail), MAX_DETAIL_LENGTH) : undefined;
+	const detailBounded = detail ? bound(stripControls(detail), MAX_DETAIL_LENGTH) : undefined;
 	if (status === 413) {
 		return {
 			title: bound('Package too large', MAX_TITLE_LENGTH),
@@ -172,34 +170,10 @@ function bound(value: string, max: number): string {
 	return value.slice(0, Math.max(0, max - 1)) + '…';
 }
 
-/**
- * Map of characters the regex matches to their HTML entity
- * replacements. Used by `escape` below; kept module-level so the
- * object is allocated once.
- */
-const HTML_ESCAPE_MAP: Readonly<Record<'&' | '<' | '>' | '"' | "'", string>> = Object.freeze({
-	'&': '&amp;',
-	'<': '&lt;',
-	'>': '&gt;',
-	'"': '&quot;',
-	"'": '&#39;'
-});
-
-/**
- * Escape a value for safe interpolation. Used only for the
- * optional `detail` fields; `message` is already escaped by the
- * upstream SDK contract. The escape is defence-in-depth — the
- * page renders these as text via Svelte's interpolation, but
- * the Svelte template may change and the underlying values are
- * potentially from a hostile service.
- */
-function escape(value: string): string {
-	return (
-		value
-			.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch as '&' | '<' | '>' | '"' | "'"])
-			// eslint-disable-next-line no-control-regex -- defence-in-depth against hostile SDK content; this range is exactly the C0 controls + DEL.
-			.replace(/[\u0000-\u001f\u007f]/g, '')
-	);
+/** Strip C0 controls and DEL from optional detail text. */
+function stripControls(value: string): string {
+	// eslint-disable-next-line no-control-regex -- defence-in-depth against hostile SDK content; this range is exactly the C0 controls + DEL.
+	return value.replace(/[\u0000-\u001f\u007f]/g, '');
 }
 
 /**

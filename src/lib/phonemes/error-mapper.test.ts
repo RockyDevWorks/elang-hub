@@ -3,7 +3,7 @@
  *
  * The mapper is total — every `PhonemeRequestOutcome` produces
  * one `PhonemePageErrorInfo`. The tests pin the mapping for each
- * `kind`, and pin the defence-in-depth escape/bound behaviour
+ * `kind`, and pin the control-stripping and length bounds
  * for untrusted content.
  */
 
@@ -49,7 +49,7 @@ function okView(): PhonemeViewResult {
 	};
 }
 
-function failedView(): PhonemeViewResult {
+function failedView(): Extract<PhonemeViewResult, { ok: false }> {
 	return {
 		ok: false,
 		code: PHONEME_VIEW_EXTRACTION_FAILED,
@@ -67,7 +67,7 @@ describe('error-mapper / mapRequestOutcome', () => {
 		expect(info.message).toBeTruthy();
 	});
 
-	it('maps an extraction failure to a bounded, escaped message and detail', () => {
+	it('maps an extraction failure to a bounded message and detail', () => {
 		const outcome = viewOutcome(failedView());
 		const info = mapRequestOutcome(outcome);
 		expect(info.message).toMatch(/inventory/i);
@@ -113,12 +113,7 @@ describe('error-mapper / mapRequestOutcome', () => {
 		expect(info.title).toMatch(/validation/i);
 	});
 
-	it('includes the SDK detail path when present, HTML-escaped', () => {
-		// The detail string exercises every HTML-escape branch:
-		// `&`, `<`, `>`, `"`, and `'` (single quote → `&#39;`).
-		// The string `inventory<'"&>.groups[0]` contains all five
-		// special characters so the test pins the entire escape
-		// switch.
+	it('preserves HTML-special characters in the SDK detail path', () => {
 		const outcome = sdkErrorOutcome(
 			hubError({
 				stage: 'validate',
@@ -127,20 +122,23 @@ describe('error-mapper / mapRequestOutcome', () => {
 			})
 		);
 		const info = mapRequestOutcome(outcome);
-		expect(info.detail).toBe('inventory&lt;&#39;&quot;&amp;&gt;.groups[0]');
+		expect(info.detail).toBe('inventory<\'"&>.groups[0]');
 	});
 
-	it('strips control characters from the detail path', () => {
-		const outcome = sdkErrorOutcome(
-			hubError({
-				stage: 'validate',
-				code: 'phoneme_inventory_invalid',
-				detail: 'path\u0000with\u001fcontrols\u007f'
-			})
-		);
-		const info = mapRequestOutcome(outcome);
-		expect(info.detail).toBe('pathwithcontrols');
-	});
+	it.each(['view', 'sdk_error', 'http_error'] as const)(
+		'preserves detail text and strips all C0 controls and DEL for %s',
+		(kind) => {
+			const text = 'inventory<\'"&>.groups[0] &lt; \u0080';
+			const controls = String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i), 127);
+			const detail = controls + text;
+			const outcomes = {
+				view: viewOutcome({ ...failedView(), path: detail }),
+				sdk_error: sdkErrorOutcome(hubError({ detail })),
+				http_error: httpErrorOutcome(500, detail)
+			};
+			expect(mapRequestOutcome(outcomes[kind]).detail).toBe(text);
+		}
+	);
 
 	it('maps HTTP 413 to "Package too large"', () => {
 		const outcome = httpErrorOutcome(413);
@@ -166,9 +164,9 @@ describe('error-mapper / mapRequestOutcome', () => {
 		expect(info.message).toMatch(/418/);
 	});
 
-	it('escapes the HTTP detail (defence-in-depth)', () => {
+	it('preserves the HTTP detail for text interpolation', () => {
 		const info = mapRequestOutcome(httpErrorOutcome(500, '<script>'));
-		expect(info.detail).toBe('&lt;script&gt;');
+		expect(info.detail).toBe('<script>');
 	});
 
 	it('maps transport offline to "Network unavailable"', () => {

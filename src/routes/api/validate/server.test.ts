@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-// `$app/env/private` in the vitest environment does not track
-// `process.env` stubs, so the SvelteKit env module is mocked here to
-// return a fixed validation URL.
+// `$app/env/private` is SvelteKit 3's generated accessor. The module
+// is mocked here so the endpoint sees a fixed validation URL without a
+// configured deployment environment. The getter keeps the value live,
+// matching how the endpoint reads it per request.
 vi.mock('$app/env/private', () => ({
-	VALIDATION_SERVICE_URL: 'http://validation.test'
+	get SDK_SERVICE_URL(): string {
+		return 'http://validation.test';
+	}
 }));
 
 type ValidateRoute = (event: unknown) => Promise<Response>;

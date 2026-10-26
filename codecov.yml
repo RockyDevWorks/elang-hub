@@ -1,0 +1,39 @@
+# Codecov configuration for ELANG Hub.
+#
+# Consumed by Codecov when it uploads the coverage report produced
+# by `npm run coverage` in CI. Targets and gates are intentionally
+# minimal for v0.1.0 — there is no enforced coverage floor yet,
+# only the visible badge and the PR-comment summary so reviewers
+# can spot regressions.
+
+codecov:
+  # The public uploader for a public repo; no `token` is required.
+  require_ci_to_pass: true
+  notify:
+    # Wait for the codecov upload to finish before the PR comment
+    # lands; avoids an empty "0% covered" comment when the upload
+    # races the test job.
+    after_n_builds: 1
+    wait_for_ci: true
+
+coverage:
+  precision: 1
+  round: down
+  range: '70...90'
+
+# Hide the coverage drop on PRs that change only the lockfile or
+# generated SvelteKit output.
+ignore:
+  - 'package-lock.json'
+  - '.svelte-kit/**'
+  - 'build/**'
+  - 'dist/**'
+
+# Per-file comments are noisy for a v0.1.0 PR review; the project
+# summary is enough.
+comment:
+  layout: 'header, diff, flags, components, summary'
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true

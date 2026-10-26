@@ -10,8 +10,8 @@ v0.1.0 — Phoneme Viewer
 
 1. **Package Upload**
    - Accept `.elang` v0.1.0 package files via web interface
-   - Client-side file selection checks (extension, size)
-   - Submit to the Hub validation route
+   - Client-side file validation (file extension, basic structure check)
+   - Upload to validation service (Fly.io backend)
 
 2. **Validation**
    - Server-side execution of `elang validate` (stages 1–12)
@@ -118,7 +118,7 @@ v0.1.0 is considered successful when:
 
 ## References
 
-- ELANG Hub Issue #2: `[HUB][v0.1.0][H00]` Setup & CI
-- ELANG Hub Issue #17: `[HUB][v0.1.0]` Master Implementation and Release Tracker
+- ELANG Hub Issue #2: [HUB][v0.1.0][H00] Setup & CI
+- ELANG Hub Issue #17: [HUB][v0.1.0] Master Implementation and Release Tracker
 - ELANG specification: https://github.com/RockyDevWorks/elang-rs
 - Architecture Decision Record 0001: Architecture and Deployment Strategy

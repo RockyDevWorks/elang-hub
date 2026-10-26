@@ -102,7 +102,13 @@ describe('UploadController (H0104, H0105, H0106, H0108)', () => {
 				s.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
 			});
 		});
-		await settle();
+		// Wait for the validator to actually be invoked rather than
+		// assuming a fixed number of microtask ticks is enough. The
+		// file read crosses an event-loop boundary wherever
+		// `File.stream()` exists, so a tick count is a race.
+		await vi.waitFor(() => {
+			expect(signal).not.toBeNull();
+		});
 
 		controller.cancel();
 		await run;
@@ -159,7 +165,12 @@ describe('UploadController (H0104, H0105, H0106, H0108)', () => {
 				s.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
 			});
 		});
-		await settle();
+		// See the note in "aborts the validator signal on cancel" — the
+		// validator must have been invoked before the reset, or the
+		// assertion below would be checking a signal that never ran.
+		await vi.waitFor(() => {
+			expect(signal).not.toBeNull();
+		});
 
 		controller.reset();
 		await run;

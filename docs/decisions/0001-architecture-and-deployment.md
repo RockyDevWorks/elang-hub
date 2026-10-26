@@ -58,11 +58,6 @@ Key constraints:
 User uploads .elang file
     ↓
 Cloudflare Pages (SvelteKit frontend)
-    ↓ HTTP POST /api/validate
-SvelteKit route handler (this repository)
-    - reads the body up to MAX_FILE_BYTES
-    - forwards opaque bytes to the validation service
-    - validates the response shape and returns it to the browser
     ↓ HTTP POST /validate
 Fly.io validation API
     ↓ exec `elang validate`
@@ -70,16 +65,8 @@ elang-rs CLI (Rust binary)
     ↓ return validation results + extracted phoneme data
 Fly.io API (JSON response)
     ↓
-SvelteKit route handler returns the verdict to the browser
-    ↓
 Cloudflare Pages renders phoneme viewer
 ```
-
-> **Refinement (H01, 2026-10-24):** the original H00 design sent
-> the browser straight to Fly.io. The H01 implementation proxies
-> through SvelteKit instead, so the Hub can enforce the 16 MiB
-> server-side bound, keep the service URL private, and stream the
-> body with a hard byte cap.
 
 ### SDK Integration Policy
 
@@ -119,7 +106,7 @@ Cloudflare Pages renders phoneme viewer
 
 ## References
 
-- ELANG Hub Issue #2: `[HUB][v0.1.0][H00]` Setup & CI
+- ELANG Hub Issue #2: [HUB][v0.1.0][H00] Setup & CI
 - `elang-rs` repository: https://github.com/RockyDevWorks/elang-rs
 - SvelteKit documentation: https://svelte.dev/docs/kit
 - Cloudflare Pages documentation: https://developers.cloudflare.com/pages

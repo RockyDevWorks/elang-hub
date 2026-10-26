@@ -26,14 +26,53 @@ Key constraints:
 - **Styling:** Tailwind CSS
 - **Component library:** shadcn-svelte (accessible, customizable components)
 - **Icons:** Lucide icons
-- **Deployment:** Cloudflare Pages via `@sveltejs/adapter-cloudflare`
+- **Deployment:** Cloudflare Workers via `@sveltejs/adapter-cloudflare` (the emitted static assets remain Pages-compatible)
 
 **Rationale:**
 
 - SvelteKit provides excellent DX, flexible rendering (SSR/SSG/CSR), and strong TypeScript support
 - Tailwind CSS enables rapid UI development with consistent design
 - shadcn-svelte delivers accessible, well-tested components without heavy framework lock-in
-- Cloudflare Pages offers fast edge delivery, zero-config deployment, and generous free tier
+- Cloudflare Pages offers fast edge delivery, zero-config deployment, and generous free tier (the adapter emits a Workers entry point; the static assets are Pages-compatible)
+
+### Pinned major versions
+
+The Hub pins its framework majors explicitly. The SvelteKit 3 and
+Tailwind 4 upgrades were tracked in [issue #20](https://github.com/RockyDevWorks/elang-hub/issues/20)
+and ship in v0.1.0.
+
+| Package                             | Pinned major | Version at v0.1.0 |
+| ----------------------------------- | ------------ | ----------------- |
+| `@sveltejs/kit`                     | 3            | `^3.1.0`          |
+| `@sveltejs/adapter-cloudflare`      | 8            | `^8.0.1`          |
+| `@sveltejs/vite-plugin-svelte`      | 7            | `^7.3.1`          |
+| `svelte`                            | 5            | `^5.57.1`         |
+| `vite`                              | 8            | `^8.0.12`         |
+| `tailwindcss` / `@tailwindcss/vite` | 4            | `^4.3.3`          |
+| `vitest`                            | 4            | `^4.1.12`         |
+| `typescript`                        | 6            | `^6.0.3`          |
+
+**Rationale for pinning:**
+
+- **SvelteKit 3 and Tailwind 4 together.** SvelteKit 3 changes the
+  defaults for `request.json`, `cookies` and `error`, and Tailwind 4
+  replaces `tailwind.config.js` with the `@theme` directive in CSS.
+  Migrating both in one change reduces churn, because the Tailwind 4
+  configuration format and the SvelteKit 3 plugin surface overlap.
+- **`adapter-cloudflare` 8 in lockstep.** The adapter major must match
+  the kit major; 7.x is built against kit 2.x and would break at deploy
+  time, not at build time.
+- **No `overrides` block.** The advisory that originally forced a pin
+  (`undici`, pulled in by `miniflare` via `wrangler`) is cleared at the
+  source: `wrangler` is declared as a direct devDependency at `^4.153.0`,
+  which resolves `miniflare` 5.20261023 and `undici` 7.30.1 naturally.
+  `npm audit --audit-level=moderate` therefore exits 0 with an empty
+  `overrides` map, and a patched transitive dependency cannot be silently
+  regressed by a later parent release.
+- **Known non-blocking item.** SvelteKit 3 deprecates the
+  `config.alias` option; the warning is retained rather than silenced,
+  so the deprecation stays visible until the migration to subpath
+  imports is done deliberately.
 
 ### Backend Architecture
 
@@ -111,3 +150,15 @@ Cloudflare Pages renders phoneme viewer
 - SvelteKit documentation: https://svelte.dev/docs/kit
 - Cloudflare Pages documentation: https://developers.cloudflare.com/pages
 - Fly.io documentation: https://fly.io/docs
+
+## Amendment history
+
+- **2026-10-26 (v0.1.0).** Added § "Pinned major versions" recording the
+  SvelteKit 3, `adapter-cloudflare` 8, Tailwind 4, Vite 8, Svelte 5,
+  Vitest 4, TypeScript 6 and the rationale for landing both Kit 3 and
+  Tailwind 4 together. Corrected the deployment-target wording from
+  "Cloudflare Pages" to "Cloudflare Workers (static assets
+  Pages-compatible)" to match what `@sveltejs/adapter-cloudflare` 8
+  actually emits and what `docs/operator-guide.md` documents. The
+  `undici` advisory is now cleared by pinning `wrangler ^4.153.0` as a
+  direct devDependency, so the `overrides` block is empty.

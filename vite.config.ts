@@ -32,6 +32,11 @@ export default defineConfig({
 			 * two lines can be reconciled without a 45-file rename.
 			 */
 			alias: { $lib: 'src/lib' },
+			// Node containers bake in their browser-facing origin for URL construction
+			// and CSRF checks. Cloudflare continues to derive it from the request.
+			paths: {
+				origin: process.env.BUILD_TARGET === 'node' ? process.env.HUB_ORIGIN : undefined
+			},
 			/**
 			 * Deployment target.
 			 *

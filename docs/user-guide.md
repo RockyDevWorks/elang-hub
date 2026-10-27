@@ -21,12 +21,12 @@ security posture, see the
 
 A single `.elang` package file produced by a tool that targets the
 **ELANG binary container v0.1.0** format and the **ELANG
-specification v0.0.1-1**. Concretely, the package must:
+specification v0.1.0**. Concretely, the package must:
 
 - be a `.elang` file (the file extension is part of the format);
 - contain a single phoneme inventory (`ELD`) resource that the ELANG
   manifest points at;
-- declare a supported specification version (`0.0.1-1`) and binary
+- declare a supported specification version (`0.1.0`) and binary
   container version (`0.1.0`) in the container header;
 - be **at most 16 MiB** (16 × 1024 × 1024 bytes ≈ 16.78 MB);
 - validate cleanly against the authoritative `elang-rs` SDK's
@@ -150,7 +150,7 @@ to its cause and the next thing to try.
 | Validation timed out                   | `timeout`             | The SDK did not answer within the round-trip budget.                 | Retry; large packages can be slow. If the problem persists with a small file, report it.     |
 | Validation cancelled                   | `cancelled`           | You cancelled, or the page was navigated away from.                  | Pick the file again to retry.                                                                |
 | Package too large                      | `package_too_large`   | The file is over the 16 MiB cap.                                     | Reduce the package size, or split it (only one phoneme inventory per package is shown).      |
-| Unsupported package version            | `unsupported_version` | `spec_version` or `binaryContainerVersion` is not the supported one. | Rebuild the package with spec `0.0.1-1` and container `0.1.0`.                               |
+| Unsupported package version            | `unsupported_version` | `spec_version` or `binaryContainerVersion` is not the supported one. | Rebuild the package with spec `0.1.0` and container `0.1.0`.                                 |
 | Unsupported package feature            | `unsupported_feature` | The package uses a feature the current Hub build does not support.   | See [`operator-guide.md` §4](./operator-guide.md#4-sdk-compatibility) for what is supported. |
 | Package structure invalid              | `inspect`             | The container is malformed.                                          | Re-export from your ELANG tool; the package must round-trip cleanly.                         |
 | Integrity check failed                 | `verify`              | A resource SHA-256 did not match the manifest.                       | The package was modified after signing — regenerate it.                                      |
@@ -173,7 +173,7 @@ v0.1.0 is deliberately small. The Hub does **not**:
 
 - accept more than one file at a time;
 - accept files larger than 16 MiB;
-- accept packages whose `spec_version` is not `0.0.1-1`;
+- accept packages whose `spec_version` is not `0.1.0`;
 - accept packages whose `binaryContainerVersion` is not `0.1.0`;
 - inspect, edit, lint or re-package `.elang` files;
 - render phoneme inventories whose contents the SDK returned but the
@@ -185,7 +185,7 @@ v0.1.0 is deliberately small. The Hub does **not**:
   there are no accounts;
 - publish, share, comment on, rank, discover, follow or otherwise
   socially connect packages;
-- support ELANG versions other than `0.0.1-1` / `0.1.0`;
+- support ELANG versions other than `0.1.0` / `0.1.0`;
 - support ELD schema versions other than `0.1.0`;
 - run on browsers older than the matrix in
   [`accessibility.md` §8](./accessibility.md#8-browser-support-matrix);

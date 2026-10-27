@@ -51,7 +51,7 @@ function successBody(): Record<string, unknown> {
 	return {
 		ok: true,
 		mode: 'validate',
-		specVersion: '0.0.1-1',
+		specVersion: '0.1.0',
 		binaryContainerVersion: '0.1.0',
 		phonemeResourcePath: 'Linguistics/phonemes.eld',
 		inventory: {
@@ -135,7 +135,7 @@ describe('requestPhonemeView', () => {
 		const hostile = {
 			ok: true,
 			mode: 'validate',
-			specVersion: '0.0.1-1',
+			specVersion: '0.1.0',
 			binaryContainerVersion: '0.1.0',
 			phonemeResourcePath: 'Linguistics/phonemes.eld',
 			inventory: 'not-an-object',

@@ -148,7 +148,7 @@ Cloudflare Workers renders phoneme viewer
 ### SDK Integration Policy
 
 - Pin to a specific `elang-rs` release tag or commit SHA for the v0.1.0 validation service
-- Document the supported ELANG specification version (`0.0.1-1` binary container `0.1.0`)
+- Document the supported ELANG specification version (`0.1.0` binary container `0.1.0`)
 - Validation service uses the `elang validate` CLI command (stages 1–12)
 - No custom parsing, modification, or reimplementation of ELANG normative rules in the Hub codebase
 

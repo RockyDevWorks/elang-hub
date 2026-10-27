@@ -21,7 +21,7 @@ This document defines how ELANG Hub integrates with the authoritative `elang-rs`
 ### 3. Specification Compliance
 
 - Hub v0.1.0 supports **ELANG binary container v0.1.0** only
-- Supported specification version: `0.0.1-1`
+- Supported specification version: `0.1.0`
 - Future ELANG versions require explicit compatibility declaration
 
 ## Dependency Management
@@ -48,7 +48,7 @@ This document defines how ELANG Hub integrates with the authoritative `elang-rs`
 
 | Hub Version | ELANG Spec Version | elang-rs Version | Binary Container Version |
 | ----------- | ------------------ | ---------------- | ------------------------ |
-| v0.1.0      | 0.0.1-1            | TBD (pinned tag) | 0.1.0                    |
+| v0.1.0      | 0.1.0              | TBD (pinned tag) | 0.1.0                    |
 
 ## Update Policy
 

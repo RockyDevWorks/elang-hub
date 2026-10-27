@@ -155,7 +155,7 @@ caller.
 
 | Layer                  | Supported value                              | Source                      |
 | ---------------------- | -------------------------------------------- | --------------------------- |
-| ELANG specification    | `0.0.1-1`                                    | `src/lib/sdk/contract.ts`   |
+| ELANG specification    | `0.1.0`                                      | `src/lib/sdk/contract.ts`   |
 | ELANG binary container | `0.1.0`                                      | `src/lib/sdk/contract.ts`   |
 | ELD phoneme inventory  | schema `0.1.0`                               | `docs/elang-sdk-version.md` |
 | EPF package manifest   | schema `0.1.0`                               | `docs/elang-sdk-version.md` |

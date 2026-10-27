@@ -8,7 +8,7 @@ The validation backend will pin to a specific `elang-rs` release tag once the SD
 
 ## Supported ELANG Specification
 
-- **Specification version:** `0.0.1-1`
+- **Specification version:** `0.1.0`
 - **Binary container version:** `0.1.0`
 - **EPF schema version:** `0.1.0`
 - **ELD schema version:** `0.1.0`
@@ -17,7 +17,7 @@ The validation backend will pin to a specific `elang-rs` release tag once the SD
 
 | Hub Version | elang-rs Version | ELANG Spec | Notes                            |
 | ----------- | ---------------- | ---------- | -------------------------------- |
-| v0.1.0      | TBD              | 0.0.1-1    | Awaiting elang-rs v0.1.0 release |
+| v0.1.0      | TBD              | 0.1.0      | Awaiting elang-rs v0.1.0 release |
 
 ## Update History
 

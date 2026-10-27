@@ -54,6 +54,37 @@ npm audit --omit=dev # dependency audit
 Node `>= 22.17`. See [`docs/operator-guide.md`](./docs/operator-guide.md)
 for the full procedure, the env vars and the deployment shape.
 
+## Docker
+
+The Hub also ships as a standalone Node container image, built from
+the same source tree as the Cloudflare production target. The image
+runs `adapter-node` on port `3000` and reaches the ELANG SDK
+validation service through `SDK_SERVICE_URL` over the network.
+
+```bash
+cp .env.example .env       # then edit SDK_SERVICE_URL to your SDK service URL
+docker compose up --build  # build the image and start the container
+```
+
+The Hub is then on <http://localhost:3000>. `docker compose ps` reports
+the service as `healthy` once the readiness check returns 200.
+
+| Variable          | Required | Default in image        | Purpose                         |
+| ----------------- | -------- | ----------------------- | ------------------------------- |
+| `SDK_SERVICE_URL` | yes      | —                       | SDK validation service base URL |
+| `ORIGIN`          | no       | `http://localhost:3000` | Public origin of the Hub        |
+| `PORT`            | no       | `3000`                  | Listen port                     |
+| `HOST`            | no       | `0.0.0.0`               | Listen address                  |
+
+The container runs as the unprivileged `node` user, with a read-only
+root filesystem plus a `tmpfs` at `/tmp`, all Linux capabilities
+dropped, and `no-new-privileges`. The Hub performs no filesystem
+writes at runtime, so none of these restrict it.
+
+See [`docs/operator-guide.md` §6.4](./docs/operator-guide.md#64-container-deployment-docker)
+for the full image shape, the build pipeline, and the verification
+suite.
+
 ## Project tracking
 
 Organization GitHub Project: **LINGUA FRANCA**. Implementation is

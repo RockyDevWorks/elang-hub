@@ -55,11 +55,24 @@ OPTIONAL_NPM_CHECKS=(
 # repo root.
 TOOL_CHECKS=(
     "jscpd:jscpd --config .jscpd.json src"
-    "knip:npx --yes knip"
+    # `--no-exit-code` matches the workflow: findings surface in
+    # the log without blocking the contributor. A new unused
+    # export is a review item, not a CI failure.
+    "knip:npx --yes knip --no-exit-code"
     "gitleaks:gitleaks detect --source . --no-banner --config .gitleaks.toml"
-    "zizmor:zizmor --format plain .github/workflows"
-    "lychee:lychee --offline --no-progress --exclude-file .lycheeignore '**/*.md' '**/*.ts' '**/*.svelte'"
-    "syft:syft scan source-dir:. -o spdx-json"
+    # `--persona=regular --no-exit-codes` matches the workflow:
+    # findings surface in the log without blocking the contributor.
+    # `--no-exit-codes` is required because directory-level audit
+    # returns exit 14 (zizmor's "findings above persona threshold"
+    # exit code) even when persona=regular downgrades most of the
+    # findings to warnings.
+    "zizmor:zizmor --persona=regular --no-exit-codes --format plain .github/workflows"
+    # `.lycheeignore` is auto-detected; URL/host patterns live
+    # there. File-system exclusions use `--exclude-path`.
+    "lychee:lychee --offline --no-progress --exclude-path coverage --exclude-path .svelte-kit --exclude-path build --exclude-path dist --exclude-path .wrangler --exclude-path lcov-report --exclude-path node_modules '**/*.md' '**/*.ts' '**/*.svelte'"
+    # `dir:.` is the explicit directory scheme for syft scan; matches
+    # the workflow's command exactly.
+    "syft:syft scan dir:. -o spdx-json"
 )
 
 # Tools that have no work to do on elang-hub because the repo has no

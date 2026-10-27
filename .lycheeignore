@@ -1,38 +1,26 @@
 # Lychee link-checker ignore file.
 #
-# Each line is a glob pattern; any URL whose host OR path matches is
-# skipped silently. Comments start with `#`.
+# Each non-comment line is a Rust regex matched against the full URL
+# (scheme + host + path + fragment). A URL is skipped if the regex
+# matches its host OR its path. Comments start with `#`.
 #
-# Run with `--exclude-file .lycheeignore` (the validation workflow
-# and `scripts/validate-local.sh` both pass it). `--offline` keeps
-# the check runnable without network access — the cost is that
-# live-link checking happens in CI only.
+# The validation workflow and `scripts/validate-local.sh` run lychee
+# against `**/*.{md,ts,svelte}` with `--offline`. Use this file for
+# URL / host patterns; pass file-system exclusions via
+# `--exclude-path` in the workflow instead, because file globs are
+# not valid URL regexes (they cause "repetition operator missing
+# expression" errors).
+#
+# Localhost / loopback hosts.
+^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?(/|$)
 
-# Local anchors within a Markdown page. Lychee reports them as
-# "connection refused" because there is no host to connect to.
-**/*.md#*
+# Mailto links cannot be checked offline.
+^mailto:
 
-# Anchor-only URLs that are common in long docs.
-#anchor-only
+# file:// URLs are not reachable from the runner.
+^file://
 
-# CI artifacts and SvelteKit-generated output never carry user-visible
-# links.
-**/coverage/**
-**/.svelte-kit/**
-**/build/**
-**/dist/**
-**/.wrangler/**
-**/lcov-report/**
-**/node_modules/**
-
-# The `docs/` site occasionally links to in-repo source files by
-# relative path that resolves only when the docs site is served —
-# skip the offline ones that aren't reachable from disk.
-**/*.md#h-*
-
-# `127.0.0.1`, `localhost`, and `::1` are never reachable from CI
-# anyway; Lychee's default offline run flags every occurrence.
-localhost
-127.0.0.1
-::1
-0.0.0.0
+# Same-page anchors (Markdown heading links).
+#
+# Lychee reports `#fragment` as a separate link; ignore them.
+^[^/]+#.*

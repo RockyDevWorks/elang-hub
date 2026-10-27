@@ -64,8 +64,9 @@ org standardizes on. The local mirror is `scripts/validate-local.sh`
 - **Rust-only tools** — `cargo-fuzz`, `proptest`, `cargo-mutants`,
   `cargo-hack`, `cargo-server-checks`, `Miri` — exit 0 because the Hub
   has no Rust source. Listed for menu parity with `elang-rs` and gated
-  by a `_rust-source-guard` job so a future change adding Rust to the
-  Hub flips the right job on automatically.
+  by a `_rust-source-guard` job. The guard fails if Rust source appears
+  under `src` until real Rust checks are installed; the placeholder
+  jobs do not activate checks automatically.
 
 **Status:** ✅ Configured
 

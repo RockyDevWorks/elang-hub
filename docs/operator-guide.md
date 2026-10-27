@@ -132,10 +132,10 @@ runs the following jobs:
 In addition, six Rust-only tools are listed for menu parity with
 `elang-rs` and exit 0 because elang-hub has no Rust source:
 `cargo-fuzz`, `proptest`, `cargo-mutants`, `cargo-hack`,
-`cargo-server-checks`, `Miri`. Each runs through a `_rust-source-guard`
-gating job and is wired up to the same command shape as the elang-rs
-suite so a future change adding Rust to the Hub flips the right job
-on automatically.
+`cargo-server-checks`, `Miri`. These are placeholder jobs gated by
+`_rust-source-guard`. The guard fails if Rust source appears under
+`src` until real Rust checks are installed; they do not activate
+automatically.
 
 Run `npm run validate` locally to mirror the suite; missing tools are
 skipped (not failed) so partial installs still produce a result.

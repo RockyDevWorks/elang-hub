@@ -57,8 +57,9 @@ TOOL_CHECKS=(
     "jscpd:jscpd --config .jscpd.json src"
     # `--no-exit-code` matches the workflow: findings surface in
     # the log without blocking the contributor. A new unused
-    # export is a review item, not a CI failure.
-    "knip:npx --yes knip --no-exit-code"
+    # export is a review item, not a CI failure. Requires Knip 5,
+    # matching CI (install with `npm install --global knip@5`).
+    "knip:knip --no-exit-code"
     "gitleaks:gitleaks detect --source . --no-banner --config .gitleaks.toml"
     # `--persona=regular --no-exit-codes` matches the workflow:
     # findings surface in the log without blocking the contributor.
@@ -94,28 +95,33 @@ RUST_ONLY_TOOLS=(
 
 FAIL_FAST=0
 SKIP=()
-for arg in "$@"; do
-    case "${arg}" in
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --required)
             FAIL_FAST=1
             ;;
         --skip)
-            shift
-            SKIP+=("$@")
-            break
+            if [[ $# -lt 2 || "$2" == -* ]]; then
+                printf '%s\n' '--skip requires a check name' >&2
+                exit 2
+            fi
+            SKIP+=("$2")
+            shift 2
+            continue
             ;;
         --skip=*)
-            SKIP+=("${arg#--skip=}")
+            SKIP+=("${1#--skip=}")
             ;;
         -h|--help)
             sed -n '2,30p' "$0"
             exit 0
             ;;
         *)
-            printf 'unknown argument: %s\n' "${arg}" >&2
+            printf 'unknown argument: %s\n' "$1" >&2
             exit 2
             ;;
     esac
+    shift
 done
 
 is_skipped() {

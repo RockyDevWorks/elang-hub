@@ -154,7 +154,10 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/v1.55.0/install.sh \
             -o /tmp/syft-install.sh
-          sh /tmp/syft-install.sh -b /usr/local/bin v1.55.0
+          syft_bin="$RUNNER_TEMP/syft-bin"
+          mkdir -p "$syft_bin"
+          sh /tmp/syft-install.sh -b "$syft_bin" v1.55.0
+          export PATH="$syft_bin:$PATH"
           # `dir:.` is the explicit directory scheme; `syft scan .`
           # also works but the explicit scheme is unambiguous.
           syft scan dir:. -o spdx-json > elang-hub.spdx.json
@@ -192,9 +195,9 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────
   # Rust-only tools — listed for menu parity with elang-rs.
-  # Each job verifies the absence of Rust source and exits 0; if a
-  # future change adds Rust to elang-hub, the corresponding job
-  # becomes the right place to wire the real check up.
+  # The guard fails if Rust source appears under src until real
+  # checks are installed. The placeholder jobs run only when no
+  # Rust source is present.
   # ───────────────────────────────────────────────────────────────────────
 
   _rust-source-guard:
@@ -208,6 +211,8 @@ jobs:
         run: |
           if find src -name '*.rs' -print -quit | grep -q .; then
             echo 'has-rust=true' >> "$GITHUB_OUTPUT"
+            echo '::error::Rust source detected under src; install the Rust validation checks before proceeding.'
+            exit 1
           else
             echo 'has-rust=false' >> "$GITHUB_OUTPUT"
           fi

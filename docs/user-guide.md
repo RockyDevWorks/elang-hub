@@ -26,8 +26,9 @@ specification v0.1.0**. Concretely, the package must:
 - be a `.elang` file (the file extension is part of the format);
 - contain a single phoneme inventory (`ELD`) resource that the ELANG
   manifest points at;
-- declare a supported specification version (`0.1.0`) and binary
-  container version (`0.1.0`) in the container header;
+- declare the supported specification version (`0.1.0`) as
+  `spec_version` in the descriptor and the binary container version
+  (`0.1.0`) in the container header;
 - be **at most 16 MiB** (16 × 1024 × 1024 bytes ≈ 16.78 MB);
 - validate cleanly against the authoritative `elang-rs` SDK's
   `validate` pipeline (inspect + verify + descriptor + ELD semantics).
@@ -144,20 +145,20 @@ Every error the page shows comes from a small closed set of titles
 (bound by `error-mapper.ts`). Use the table to match the title you see
 to its cause and the next thing to try.
 
-| Title                                  | Code                  | Meaning                                                              | Try next                                                                                     |
-| -------------------------------------- | --------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Validation service unavailable         | `service_unavailable` | The Hub could not reach the SDK service.                             | Retry; if the problem persists, the service is down — try again later.                       |
-| Validation timed out                   | `timeout`             | The SDK did not answer within the round-trip budget.                 | Retry; large packages can be slow. If the problem persists with a small file, report it.     |
-| Validation cancelled                   | `cancelled`           | You cancelled, or the page was navigated away from.                  | Pick the file again to retry.                                                                |
-| Package too large                      | `package_too_large`   | The file is over the 16 MiB cap.                                     | Reduce the package size, or split it (only one phoneme inventory per package is shown).      |
-| Unsupported package version            | `unsupported_version` | `spec_version` or `binaryContainerVersion` is not the supported one. | Rebuild the package with spec `0.1.0` and container `0.1.0`.                                 |
-| Unsupported package feature            | `unsupported_feature` | The package uses a feature the current Hub build does not support.   | See [`operator-guide.md` §4](./operator-guide.md#4-sdk-compatibility) for what is supported. |
-| Package structure invalid              | `inspect`             | The container is malformed.                                          | Re-export from your ELANG tool; the package must round-trip cleanly.                         |
-| Integrity check failed                 | `verify`              | A resource SHA-256 did not match the manifest.                       | The package was modified after signing — regenerate it.                                      |
-| Validation failed                      | `validate`            | The EPF descriptor or ELD semantic rules rejected the inventory.     | Read the diagnostic for the field path; fix the inventory and re-export.                     |
-| Network unavailable                    | transport `offline`   | Your browser cannot reach the Hub at all.                            | Check your connection and retry.                                                             |
-| Could not read the validated inventory | view extractor        | The SDK returned `ok: true` but the inventory shape did not match.   | File a bug; this is a Hub-side regression and should not happen on a conformant SDK.         |
-| Unexpected failure                     | `unknown`             | An unrecognised error escaped the SDK.                               | Retry; if reproducible, report it with the file size and approximate contents.               |
+| Title                                  | Code                  | Meaning                                                            | Try next                                                                                     |
+| -------------------------------------- | --------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Validation service unavailable         | `service_unavailable` | The Hub could not reach the SDK service.                           | Retry; if the problem persists, the service is down — try again later.                       |
+| Validation timed out                   | `timeout`             | The SDK did not answer within the round-trip budget.               | Retry; large packages can be slow. If the problem persists with a small file, report it.     |
+| Validation cancelled                   | `cancelled`           | You cancelled, or the page was navigated away from.                | Pick the file again to retry.                                                                |
+| Package too large                      | `package_too_large`   | The file is over the 16 MiB cap.                                   | Reduce the package size, or split it (only one phoneme inventory per package is shown).      |
+| Unsupported package version            | `unsupported_version` | Unsupported descriptor `spec_version` or container header version. | Rebuild with descriptor `spec_version` and container header version both `0.1.0`.            |
+| Unsupported package feature            | `unsupported_feature` | The package uses a feature the current Hub build does not support. | See [`operator-guide.md` §4](./operator-guide.md#4-sdk-compatibility) for what is supported. |
+| Package structure invalid              | `inspect`             | The container is malformed.                                        | Re-export from your ELANG tool; the package must round-trip cleanly.                         |
+| Integrity check failed                 | `verify`              | A resource SHA-256 did not match the manifest.                     | The package was modified after signing — regenerate it.                                      |
+| Validation failed                      | `validate`            | The EPF descriptor or ELD semantic rules rejected the inventory.   | Read the diagnostic for the field path; fix the inventory and re-export.                     |
+| Network unavailable                    | transport `offline`   | Your browser cannot reach the Hub at all.                          | Check your connection and retry.                                                             |
+| Could not read the validated inventory | view extractor        | The SDK returned `ok: true` but the inventory shape did not match. | File a bug; this is a Hub-side regression and should not happen on a conformant SDK.         |
+| Unexpected failure                     | `unknown`             | An unrecognised error escaped the SDK.                             | Retry; if reproducible, report it with the file size and approximate contents.               |
 
 If a diagnostic carries a `path` line, that is the SDK's pointer at the
 offending field in the package (for example,

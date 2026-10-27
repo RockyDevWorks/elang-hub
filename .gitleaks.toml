@@ -2,7 +2,7 @@
 #
 # `gitleaks detect --source .` is run by the validation workflow
 # (and locally via `scripts/validate-local.sh`) against the full
-# working tree, not just the diff. Rules here cover the only secret
+# git history, not just the diff. Rules here cover the only secret
 # shape the Hub emits at runtime: the `SDK_SERVICE_URL` value baked
 # into `.env` files for the container target. Everything else the
 # app touches is open-source by design (no API keys, no DB
@@ -28,8 +28,6 @@ paths = [
 	'''\.kiro/.*''',
 	'''README\.md''',
 	'''\.coderabbit\.yaml''',
-	'''scripts/validate-local\.sh''',
-	'''\.github/.*''',
 	'''coverage/.*''',
 	'''\.svelte-kit/.*''',
 	'''build/.*'''
@@ -39,8 +37,7 @@ regexes = [
 	'''STDERR_TEST_OUTPUT''',
 	# `user:pass@host` test fixtures with obviously-fake credentials.
 	'''user:pass@fake-host\.invalid''',
-	'''user:pass@host\.invalid''',
-	'''https?://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+'''
+	'''user:pass@host\.invalid'''
 ]
 # Allow a small set of intentional example URLs in docs and tests.
 regexTarget = "match"
@@ -55,3 +52,8 @@ stopwords = [
 	"sdk-staging.example.internal",
 	"your-fly-app.fly.dev"
 ]
+
+[[rules]]
+id = "credential-url"
+description = "HTTP URL containing credentials"
+regex = '''https?://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+'''

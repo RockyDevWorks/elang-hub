@@ -155,7 +155,7 @@ caller.
 
 | Layer                  | Supported value                              | Source                      |
 | ---------------------- | -------------------------------------------- | --------------------------- |
-| ELANG specification    | `0.1.0`                                      | `src/lib/sdk/contract.ts`   |
+| ELANG specification    | `0.0.1-1`                                    | `src/lib/sdk/contract.ts`   |
 | ELANG binary container | `0.1.0`                                      | `src/lib/sdk/contract.ts`   |
 | ELD phoneme inventory  | schema `0.1.0`                               | `docs/elang-sdk-version.md` |
 | EPF package manifest   | schema `0.1.0`                               | `docs/elang-sdk-version.md` |
@@ -318,11 +318,16 @@ in configuration.
   responds 503 with the message "The validation service URL is not
   configured on this deployment." The static page is unaffected.
 
-- `ORIGIN` — container only. SvelteKit uses it for absolute URL
-  construction and for its CSRF origin check. Set it to the public
-  origin of the Hub (for example `https://hub.example.com`). The
-  image defaults to `http://localhost:3000`, which suits local use
-  only.
+- `HUB_ORIGIN` — container build argument, passed to SvelteKit's
+  `paths.origin` in `vite.config.ts` for URL construction and CSRF
+  checks. Set it in `.env` to the browser-facing origin (scheme, host,
+  optional port, no path), for example `https://hub.example.com`.
+  The build defaults to `http://localhost:3000` for local use; update
+  it when changing `HUB_PORT` or publishing behind a reverse proxy.
+  Use the public HTTPS origin even if the proxy connects to the
+  container over HTTP. Rebuild with `docker compose up --build` after
+  changing it. SvelteKit 3 no longer reads the runtime `ORIGIN`
+  variable. Cloudflare continues to derive the origin from requests.
 
 - `PORT` / `HOST` — container only. The image defaults to `3000` and
   `0.0.0.0`.
@@ -365,15 +370,21 @@ SvelteKit's server code is bundled into `build/server/`, so the
 runtime stage needs only the production dependencies — `@lucide/svelte`
 and its transitive tree — rather than the whole toolchain.
 
-**Runtime configuration.** Every value comes from the environment; no
+**Build configuration.** Compose passes `HUB_ORIGIN` from `.env` as a
+build argument (default `http://localhost:3000`). For a direct image
+build, use `docker build --build-arg HUB_ORIGIN=https://hub.example.com -t elang-hub .`.
+This public value is baked into the Node bundle as `paths.origin`;
+changing a running container's environment cannot change it. See
+[SvelteKit's origin configuration](https://svelte.dev/docs/kit/adapter-node#Environment-variables-PROTOCOL_HEADER-HOST_HEADER-and-PORT_HEADER).
+
+**Runtime configuration.** These values come from the environment; no
 secret is baked into the image.
 
-| Variable          | Required | Default in image        | Purpose                         |
-| ----------------- | -------- | ----------------------- | ------------------------------- |
-| `SDK_SERVICE_URL` | yes      | —                       | SDK validation service base URL |
-| `ORIGIN`          | no       | `http://localhost:3000` | Public origin of the Hub        |
-| `PORT`            | no       | `3000`                  | Listen port                     |
-| `HOST`            | no       | `0.0.0.0`               | Listen address                  |
+| Variable          | Required | Default in image | Purpose                         |
+| ----------------- | -------- | ---------------- | ------------------------------- |
+| `SDK_SERVICE_URL` | yes      | —                | SDK validation service base URL |
+| `PORT`            | no       | `3000`           | Listen port                     |
+| `HOST`            | no       | `0.0.0.0`        | Listen address                  |
 
 **Health.** The image declares a `HEALTHCHECK` that fetches `/` using
 Node's built-in `fetch` — no extra packages. `docker compose ps`

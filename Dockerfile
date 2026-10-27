@@ -33,19 +33,19 @@ RUN npm ci --ignore-scripts --no-audit --no-fund
 # ── Stage 2: produce the Node-target build output ────────────────────────────
 FROM deps AS build
 COPY . .
+# SvelteKit 3 reads paths.origin at build time (see vite.config.ts).
+# Rebuild with the browser-facing origin when deploying beyond local dev.
+ARG HUB_ORIGIN=http://localhost:3000
 RUN npm run build:node
 
 # ── Stage 3: runtime ────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS runtime
 WORKDIR /app
 
-# SvelteKit uses ORIGIN to construct absolute URLs and to drive its
-# CSRF origin check. Override at deploy time when the Hub is published
-# on a non-loopback host; the loopback default only fits local dev.
+# The public origin is baked into the build via HUB_ORIGIN above.
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOST=0.0.0.0 \
-    ORIGIN=http://localhost:3000
+    HOST=0.0.0.0
 
 COPY package.json package-lock.json ./
 

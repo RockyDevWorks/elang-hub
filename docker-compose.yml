@@ -25,6 +25,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Browser-facing origin for SvelteKit paths.origin. Rebuild to change it.
+        HUB_ORIGIN: ${HUB_ORIGIN:-http://localhost:3000}
     image: elang-hub:local
     container_name: elang-hub
     ports:
@@ -39,10 +42,6 @@ services:
       SDK_SERVICE_URL: ${SDK_SERVICE_URL:?Set SDK_SERVICE_URL in .env to your validation service URL}
       PORT: '3000'
       HOST: '0.0.0.0'
-      # Public origin of this Hub, as the browser sees it. SvelteKit
-      # uses ORIGIN to construct absolute URLs and to drive its CSRF
-      # origin check. Override to the URL the Hub is published under.
-      ORIGIN: ${HUB_ORIGIN:-http://localhost:3000}
     restart: unless-stopped
     read_only: true
     tmpfs:

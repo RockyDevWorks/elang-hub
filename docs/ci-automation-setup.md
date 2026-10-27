@@ -39,7 +39,56 @@ Comprehensive security scanning running on push, PRs, and daily schedule.
 
 ---
 
-### 3. SonarCloud Analysis
+### 3. Validation Workflow (`.github/workflows/validation.yml`)
+
+Third-party code-quality, secret-scanning, link, and SBOM tools the
+org standardizes on. The local mirror is `scripts/validate-local.sh`
+(callable as `npm run validate`).
+
+**Jobs:**
+
+- **Jscpd** — copy-paste detection across `src/`. Configured by
+  `.jscpd.json`.
+- **Knip** — unused exports / files / dependencies. Configured by
+  `knip.json`. Reports as warnings, not errors.
+- **Gitleaks** — secret scanner over the full git history. Configured
+  by `.gitleaks.toml`.
+- **Zizmor** — GitHub Actions YAML linter. Runs against every workflow
+  in `.github/workflows/`.
+- **Lychee** — link checker, offline mode. Configured by
+  `.lycheeignore`.
+- **Syft** — generates an SPDX SBOM, uploads as a workflow artifact
+  (`elang-hub-sbom`).
+- **OpenSSF Scorecard** — supply-chain posture scoring. Runs on push,
+  schedule, and manual dispatch only.
+- **Rust-only tools** — `cargo-fuzz`, `proptest`, `cargo-mutants`,
+  `cargo-hack`, `cargo-server-checks`, `Miri` — exit 0 because the Hub
+  has no Rust source. Listed for menu parity with `elang-rs` and gated
+  by a `_rust-source-guard` job. The guard fails if Rust source appears
+  under `src` until real Rust checks are installed; the placeholder
+  jobs do not activate checks automatically.
+
+**Status:** ✅ Configured
+
+**Setup Required:**
+
+- None — tools install themselves in each job.
+- The OpenSSF Scorecard job uses the existing `security-events: write`
+  and `id-token: write` permissions granted at the workflow level.
+
+**Local equivalent:**
+
+```bash
+npm run validate             # run everything that is available
+npm run validate:required    # fail fast on a required check failure
+```
+
+Missing tools are skipped (not failed) so a partial install still
+produces a useful result.
+
+---
+
+### 4. SonarCloud Analysis
 
 Code quality and security analysis with SonarCloud Automatic Analysis.
 

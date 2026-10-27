@@ -1,0 +1,58 @@
+# Gitleaks configuration for ELANG Hub.
+#
+# `gitleaks detect --source .` is run by the validation workflow
+# (and locally via `scripts/validate-local.sh`) against the full
+# git history, not just the diff. Rules here cover the only secret
+# shape the Hub emits at runtime: the `SDK_SERVICE_URL` value baked
+# into `.env` files for the container target. Everything else the
+# app touches is open-source by design (no API keys, no DB
+# credentials, no signing secrets — see docs/security/threat-model.md).
+#
+# The allowlist below lets test fixtures and docs quote known-safe
+# example URLs without tripping the scanner. Anything that LOOKS like
+# a URL with credentials (user:pass@host) is always flagged —
+# those are the leaks this guard exists to catch.
+
+title = "elang-hub gitleaks"
+
+[extend]
+# Use the community default ruleset as the base, then add Hub-specific
+# allowlists on top. `useDefault = true` is the supported way to opt
+# into the bundled rules; older configs used `[allowlist]` stanzas.
+useDefault = true
+
+[allowlist]
+description = "ELANG Hub safe allowlist"
+paths = [
+	'''docs/.*''',
+	'''\.kiro/.*''',
+	'''README\.md''',
+	'''\.coderabbit\.yaml''',
+	'''coverage/.*''',
+	'''\.svelte-kit/.*''',
+	'''build/.*'''
+]
+regexes = [
+	# `npm test` output is allowed in test logs and fixture comments.
+	'''STDERR_TEST_OUTPUT''',
+	# `user:pass@host` test fixtures with obviously-fake credentials.
+	'''^https?://user:pass@(fake-host|host)\.invalid$''',
+	# The local scanner regression fixture uses this exact endpoint.
+	'''^http://user:pass@localhost:3000$'''
+]
+# Allow a small set of intentional example URLs in docs and tests.
+regexTarget = "match"
+stopwords = [
+	"example",
+	"invalid",
+	"hub.example.com",
+	"sdk-staging.example.internal",
+	"your-fly-app.fly.dev"
+]
+
+[[rules]]
+id = "credential-url"
+description = "HTTP URL containing credentials"
+# Escapes must be complete bytes. Include ports in the match so the
+# exact fixture allowlist cannot hide credentials on another port.
+regex = '''https?://(?:[a-zA-Z0-9._-]|%[a-fA-F0-9]{2})+:(?:[a-zA-Z0-9._-]|%[a-fA-F0-9]{2})+@(?:[a-zA-Z0-9.-]+|\[::1\])(?::[0-9]+)?'''

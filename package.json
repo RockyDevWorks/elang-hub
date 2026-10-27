@@ -14,7 +14,9 @@
 		"format": "prettier --write .",
 		"test": "svelte-kit sync && vitest run",
 		"test:watch": "vitest",
-		"coverage": "svelte-kit sync && vitest run --coverage"
+		"coverage": "svelte-kit sync && vitest run --coverage",
+		"validate": "scripts/validate-local.sh",
+		"validate:required": "scripts/validate-local.sh --required"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-cloudflare": "^8.0.1",

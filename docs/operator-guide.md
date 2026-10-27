@@ -104,6 +104,42 @@ PR. The jobs are:
 Run the same gates locally before pushing. The SvelteKit CI quality
 gates skill has the full procedure with the failure-mode catalogue.
 
+### 2.6 Validation suite
+
+The validation workflow (`.github/workflows/validation.yml`) runs a
+menu of third-party code-quality and supply-chain tools the org
+standardizes on. The same menu is exposed locally as
+`scripts/validate-local.sh`, callable as `npm run validate`. The Hub
+runs the following jobs:
+
+- **Jscpd** — copy-paste detection across `src/`. Configured by
+  `.jscpd.json` (threshold 1, ignores build / coverage / fixture
+  files).
+- **Knip** — unused exports, files, and dependencies. Configured by
+  `knip.json`. Reports as warnings (do not block merge).
+- **Gitleaks** — secret scanner over the full git history. Configured
+  by `.gitleaks.toml`.
+- **Zizmor** — GitHub Actions YAML linter. Runs against every workflow
+  in `.github/workflows/`.
+- **Lychee** — link checker, offline mode. Configured by
+  `.lycheeignore`.
+- **Syft** — generates a CycloneDX/SPDX SBOM and uploads it as a
+  workflow artifact (`elang-hub-sbom`).
+- **OpenSSF Scorecard** — supply-chain posture scoring. Push / schedule
+  / manual dispatch only (skipped on PRs, where the event metadata it
+  needs is not available).
+
+In addition, six Rust-only tools are listed for menu parity with
+`elang-rs` and exit 0 because elang-hub has no Rust source:
+`cargo-fuzz`, `proptest`, `cargo-mutants`, `cargo-hack`,
+`cargo-server-checks`, `Miri`. These are placeholder jobs gated by
+`_rust-source-guard`. The guard fails if Rust source appears under
+`src` until real Rust checks are installed; they do not activate
+automatically.
+
+Run `npm run validate` locally to mirror the suite; missing tools are
+skipped (not failed) so partial installs still produce a result.
+
 ---
 
 ## 3. Project layout

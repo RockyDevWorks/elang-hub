@@ -83,14 +83,14 @@ does not imply a change in another.
 | Domain                  | Value                                                           | Notes                                              |
 | ----------------------- | --------------------------------------------------------------- | -------------------------------------------------- |
 | Hub release             | `0.1.0`                                                         | The application release this code ships as         |
-| ELANG Specification     | `0.0.1-1`                                                       | The normative spec the Hub targets                 |
+| ELANG Specification     | `0.1.0`                                                         | The normative spec the Hub targets                 |
 | ELANG Binary container  | `0.1.0`                                                         | Header major `0`, minor `1`                        |
 | EPF (`package.epf`)     | `0.1.0`                                                         | Descriptor schema                                  |
 | ELD (phoneme inventory) | `0.1.0`                                                         | `.eld` schema                                      |
 | `elang-rs` SDK          | pinned to a release tag or commit SHA by the validation service | Held by the SDK service deployment, not by the Hub |
 
 The Hub is **strict** about the ELANG binary container `0.1.0` and
-ELANG specification `0.0.1-1`. The Hub sends opaque package bytes
+ELANG specification `0.1.0`. The Hub sends opaque package bytes
 to the SDK validation service, then rejects unsupported versions
 reported in the SDK response. Future ELANG versions require an
 explicit compatibility declaration in

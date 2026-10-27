@@ -60,7 +60,7 @@ TOOL_CHECKS=(
     # export is a review item, not a CI failure. Requires Knip 5,
     # matching CI (install with `npm install --global knip@5`).
     "knip:knip --no-exit-code"
-    "gitleaks:gitleaks detect --source . --no-banner --config .gitleaks.toml"
+    "gitleaks:gitleaks detect --source . --no-banner --config .gitleaks.toml && bash scripts/test-gitleaks.sh"
     # `--persona=regular --no-exit-codes` matches the workflow:
     # findings surface in the log without blocking the contributor.
     # `--no-exit-codes` is required because directory-level audit

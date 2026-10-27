@@ -91,6 +91,7 @@ jobs:
           tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
           sudo mv /tmp/gitleaks /usr/local/bin/
           gitleaks detect --source . --no-banner --config .gitleaks.toml
+          bash scripts/test-gitleaks.sh
 
   zizmor:
     name: Zizmor (GitHub Actions YAML linter)

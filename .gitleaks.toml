@@ -36,18 +36,15 @@ regexes = [
 	# `npm test` output is allowed in test logs and fixture comments.
 	'''STDERR_TEST_OUTPUT''',
 	# `user:pass@host` test fixtures with obviously-fake credentials.
-	'''user:pass@fake-host\.invalid''',
-	'''user:pass@host\.invalid'''
+	'''^https?://user:pass@(fake-host|host)\.invalid$''',
+	# The local scanner regression fixture uses this exact endpoint.
+	'''^http://user:pass@localhost:3000$'''
 ]
 # Allow a small set of intentional example URLs in docs and tests.
 regexTarget = "match"
 stopwords = [
 	"example",
 	"invalid",
-	"localhost",
-	"127.0.0.1",
-	"0.0.0.0",
-	"::1",
 	"hub.example.com",
 	"sdk-staging.example.internal",
 	"your-fly-app.fly.dev"
@@ -56,4 +53,6 @@ stopwords = [
 [[rules]]
 id = "credential-url"
 description = "HTTP URL containing credentials"
-regex = '''https?://[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+'''
+# Escapes must be complete bytes. Include ports in the match so the
+# exact fixture allowlist cannot hide credentials on another port.
+regex = '''https?://(?:[a-zA-Z0-9._-]|%[a-fA-F0-9]{2})+:(?:[a-zA-Z0-9._-]|%[a-fA-F0-9]{2})+@(?:[a-zA-Z0-9.-]+|\[::1\])(?::[0-9]+)?'''

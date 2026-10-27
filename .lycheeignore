@@ -10,17 +10,12 @@
 # `--exclude-path` in the workflow instead.
 
 # Localhost / loopback hosts.
-^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(:\d+)?(/|$|\?)
+^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(:\d+)?(/|$|\?|#)
 
 # Mailto links cannot be checked offline.
 ^mailto:
 #
-# NOTE on file:// URLs: lychee v0.24.x has a quirk where any
-# .lycheeignore pattern containing the substring "file" causes
-# every URL in the input to be excluded (the regex is treated as
-# a glob for that scheme). So we deliberately do not exclude
-# file:// here. The behaviour we want is: file:// links to files
-# that do not exist on disk surface as ERROR in the lychee log
-# but do NOT fail the job — lychee returns exit 0 for missing
-# file targets. Parse failures (invalid URL syntax) DO fail with
-# exit 2; those are real defects and should be fixed.
+# Ignore entries are regular expressions. We intentionally do not
+# exclude file:// URLs: missing local targets cause lychee to exit 2.
+# Parse failures (invalid URL syntax) also fail with exit 2 and should
+# be fixed.

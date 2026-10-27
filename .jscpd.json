@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.openobserve.io/jscpd-config.json",
+	"threshold": 1,
+	"reporters": ["consoleFull"],
+	"output": [".jscpd-report"],
+	"ignore": [
+		"**/node_modules/**",
+		"**/.svelte-kit/**",
+		"**/build/**",
+		"**/coverage/**",
+		"**/dist/**",
+		"**/.wrangler/**",
+		"**/lcov-report/**",
+		"**/*.test.ts",
+		"**/*.test.svelte",
+		"**/test-fixtures.ts",
+		"**/test-helpers.ts",
+		"**/flow-harness.ts",
+		"**/flow-harness.test.ts"
+	],
+	"absolute": false,
+	"gitignore": true,
+	"ignoreCase": false,
+	"skipLocal": false
+}

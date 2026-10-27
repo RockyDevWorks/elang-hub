@@ -1,0 +1,28 @@
+{
+	"$schema": "https://unpkg.com/knip@latest/schema.json",
+	"entry": [
+		"src/routes/+page.svelte",
+		"src/routes/+layout.svelte",
+		"src/routes/api/phonemes/+server.ts",
+		"src/routes/api/validate/+server.ts",
+		"scripts/validate-local.sh"
+	],
+	"project": ["src/**/*.ts", "src/**/*.svelte"],
+	"ignore": [
+		".svelte-kit/**",
+		"src/lib/components/test-fixtures.ts",
+		"src/lib/phonemes/test-helpers.ts",
+		"src/lib/phonemes/flow-harness.ts",
+		"**/*.test.ts",
+		"**/*.test.svelte"
+	],
+	"ignoreDependencies": ["axe-core"],
+	"rules": {
+		"files": "warn",
+		"dependencies": "warn",
+		"devDependencies": "warn",
+		"exports": "warn",
+		"types": "warn",
+		"unlisted": "warn"
+	}
+}

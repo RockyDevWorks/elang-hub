@@ -1,0 +1,38 @@
+# Lychee link-checker ignore file.
+#
+# Each line is a glob pattern; any URL whose host OR path matches is
+# skipped silently. Comments start with `#`.
+#
+# Run with `--exclude-file .lycheeignore` (the validation workflow
+# and `scripts/validate-local.sh` both pass it). `--offline` keeps
+# the check runnable without network access — the cost is that
+# live-link checking happens in CI only.
+
+# Local anchors within a Markdown page. Lychee reports them as
+# "connection refused" because there is no host to connect to.
+**/*.md#*
+
+# Anchor-only URLs that are common in long docs.
+#anchor-only
+
+# CI artifacts and SvelteKit-generated output never carry user-visible
+# links.
+**/coverage/**
+**/.svelte-kit/**
+**/build/**
+**/dist/**
+**/.wrangler/**
+**/lcov-report/**
+**/node_modules/**
+
+# The `docs/` site occasionally links to in-repo source files by
+# relative path that resolves only when the docs site is served —
+# skip the offline ones that aren't reachable from disk.
+**/*.md#h-*
+
+# `127.0.0.1`, `localhost`, and `::1` are never reachable from CI
+# anyway; Lychee's default offline run flags every occurrence.
+localhost
+127.0.0.1
+::1
+0.0.0.0

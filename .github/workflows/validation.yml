@@ -111,7 +111,7 @@ jobs:
         # (low confidence) is a review item, not a CI failure.
         run: |
           pip install zizmor==1.9.0
-          zizmor --persona=regular --no-exit-codes --format plain .github/workflows
+          zizmor --persona=regular --no-exit-codes --format github .github/workflows
 
   lychee:
     name: Lychee (link checker)

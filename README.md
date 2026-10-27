@@ -9,12 +9,10 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/RockyDevWorks/elang-hub/ci.yml?branch=main&label=CI&style=flat-square)](https://github.com/RockyDevWorks/elang-hub/actions/workflows/ci.yml)
 [![Security](https://img.shields.io/github/actions/workflow/status/RockyDevWorks/elang-hub/security.yml?branch=main&label=Security&style=flat-square)](https://github.com/RockyDevWorks/elang-hub/actions/workflows/security.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/RockyDevWorks/elang-hub/main?label=Coverage&style=flat-square)](https://codecov.io/gh/RockyDevWorks/elang-hub)
-[![Quality Gate](https://img.shields.io/sonar/quality_gate/RockyDevWorks_elang-hub/main?server=https%3A%2F%2Fsonarcloud.io&label=SonarCloud&style=flat-square)](https://sonarcloud.io/project/overview?id=RockyDevWorks_elang-hub)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522.17-339933?logo=node.js&logoColor=white&style=flat-square)](https://nodejs.org/)
 [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white&style=flat-square)](https://svelte.dev/)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-3-FF3E00?logo=svelte&logoColor=white&style=flat-square)](https://kit.svelte.dev/)
-[![Cloudflare](https://img.shields.io/badge/Deploy-Cloudflare_Workers-F38020?logo=cloudflare&logoColor=white&style=flat-square)](https://workers.cloudflare.com/)
 
 </div>
 
@@ -65,8 +63,9 @@ docs are derived from.
 Pre-release, tracking **v0.1.0 — Phoneme Viewer**. The first release
 accepts an ELANG v0.1.0 `.elang` package, runs the ELANG SDK's full
 validation pipeline (`validate` mode — inspect + verify + descriptor
-+ ELD semantics), and renders a read-only Phoneme Page using the
-validated phonological definitions.
+
+- ELD semantics), and renders a read-only Phoneme Page using the
+  validated phonological definitions.
 
 v0.1.0 does **not** include user accounts, persistent publication,
 language discovery, social features, or leaderboards. Those remain
@@ -81,14 +80,14 @@ merges into `main` only at ship time.
 ELANG Hub tracks **independent** version domains. A change in one
 does not imply a change in another.
 
-| Domain | Value | Notes |
-|---|---|---|
-| Hub release | `0.1.0` | The application release this code ships as |
-| ELANG Specification | `0.0.1-1` | The normative spec the Hub targets |
-| ELANG Binary container | `0.1.0` | Header major `0`, minor `1` |
-| EPF (`package.epf`) | `0.1.0` | Descriptor schema |
-| ELD (phoneme inventory) | `0.1.0` | `.eld` schema |
-| `elang-rs` SDK | pinned to a release tag or commit SHA by the validation service | Held by the SDK service deployment, not by the Hub |
+| Domain                  | Value                                                           | Notes                                              |
+| ----------------------- | --------------------------------------------------------------- | -------------------------------------------------- |
+| Hub release             | `0.1.0`                                                         | The application release this code ships as         |
+| ELANG Specification     | `0.0.1-1`                                                       | The normative spec the Hub targets                 |
+| ELANG Binary container  | `0.1.0`                                                         | Header major `0`, minor `1`                        |
+| EPF (`package.epf`)     | `0.1.0`                                                         | Descriptor schema                                  |
+| ELD (phoneme inventory) | `0.1.0`                                                         | `.eld` schema                                      |
+| `elang-rs` SDK          | pinned to a release tag or commit SHA by the validation service | Held by the SDK service deployment, not by the Hub |
 
 The Hub is **strict** about the ELANG binary container `0.1.0` and
 ELANG specification `0.0.1-1`. Packages that declare any other

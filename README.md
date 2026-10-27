@@ -55,8 +55,9 @@ the docs site, and the CI configuration.
   CI workflows, badges, and the Codecov / SonarCloud wiring.
 
 The steering contract, plans, and the open-artifact tracker live
-under [`.kiro/`](.kiro/) and are the source of truth that the public
-docs are derived from.
+under `.kiro/` (the Kiro IDE's local steering directory; not
+committed to this repo) and are the source of truth that the
+public docs are derived from.
 
 ## Status
 

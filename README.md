@@ -90,9 +90,10 @@ does not imply a change in another.
 | `elang-rs` SDK          | pinned to a release tag or commit SHA by the validation service | Held by the SDK service deployment, not by the Hub |
 
 The Hub is **strict** about the ELANG binary container `0.1.0` and
-ELANG specification `0.0.1-1`. Packages that declare any other
-combination are rejected before they reach the SDK. Future ELANG
-versions require an explicit compatibility declaration in
+ELANG specification `0.0.1-1`. The Hub sends opaque package bytes
+to the SDK validation service, then rejects unsupported versions
+reported in the SDK response. Future ELANG versions require an
+explicit compatibility declaration in
 [`docs/sdk-compatibility-policy.md`](docs/sdk-compatibility-policy.md).
 
 ## Supported scope
@@ -189,8 +190,13 @@ The Hub exposes a small, deliberate surface:
 ```text
 GET  /                       upload page (idle state)
 POST /api/phonemes           proxy .elang bytes to the SDK validate endpoint
-GET  /api/validate           SDK service health and pinned SDK version
+POST /api/validate           validate uploaded .elang bytes in the request body
 ```
+
+`POST /api/validate` accepts raw package bytes in the request body,
+rejects empty uploads (`400`) and uploads over 16 MiB (`413`), and
+forwards accepted bytes to the configured SDK validation service.
+It returns JSON containing `ok`, `diagnostics`, and `messages`.
 
 All routes are **stateless**. The browser talks only to the Hub's
 own origin; the Hub's only outbound server-side hop is to the SDK
@@ -209,8 +215,8 @@ See [`docs/security/threat-model.md`](docs/security/threat-model.md).
 In short: the Hub is a thin read-only proxy in front of the SDK
 validation service. It defends against malicious uploads with a
 hard 16 MiB size cap (enforced on both the page and the server),
-strict content-type and extension checks, cancellation semantics
-on client navigation, and zero persistence. It never treats a
+a client-side extension check performed by `checkSelection`,
+cancellation semantics on client navigation, and zero persistence. It never treats a
 validation verdict as proof of publisher identity — that
 responsibility belongs to the language author and the publishing
 channel, not the Hub.

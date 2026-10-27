@@ -53,7 +53,7 @@ function successView(): PhonemeViewResult {
 				name: 'Test',
 				description: null,
 				specVersions: Object.freeze({
-					specVersion: '0.0.1-1' as const,
+					specVersion: '0.1.0' as const,
 					binaryContainerVersion: '0.1.0' as const
 				})
 			},

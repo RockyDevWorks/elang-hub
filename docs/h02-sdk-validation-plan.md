@@ -31,7 +31,7 @@ For H02, the Hub-side deliverable is:
 - [ ] **H0204** — Integrate validate mode
   - Adapter exposes `validate(bytes, opts)`; requires inspect + verify + descriptor + ELD before reporting success.
 - [ ] **H0205** — Enforce supported version compatibility
-  - `SUPPORTED_SPEC = "0.0.1-1"`, `SUPPORTED_BINARY_CONTAINER = "0.1.0"`. Reject mismatches explicitly. Distinguish spec version vs binary container version.
+  - `SUPPORTED_SPEC = "0.1.0"`, `SUPPORTED_BINARY_CONTAINER = "0.1.0"`. Reject mismatches explicitly. Distinguish spec version vs binary container version.
 - [ ] **H0206** — Map SDK diagnostics to user-facing errors
   - Typed error codes (12, mirroring H01's upload errors). Preserve stage. Escape content. Bound length.
 - [ ] **H0207** — Bound processing resources

@@ -69,7 +69,7 @@ const EMPTY_PACKAGE = {
 
 /** The supported wire versions — pinned by the SDK contract tests. */
 const SPEC_VERSIONS = {
-	specVersion: '0.0.1-1' as const,
+	specVersion: '0.1.0' as const,
 	binaryContainerVersion: '0.1.0' as const
 };
 

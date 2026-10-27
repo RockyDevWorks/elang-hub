@@ -89,7 +89,7 @@ export function successView(): PhonemeViewResult {
 				name: 'Test',
 				description: null,
 				specVersions: Object.freeze({
-					specVersion: '0.0.1-1',
+					specVersion: '0.1.0',
 					binaryContainerVersion: '0.1.0'
 				})
 			},

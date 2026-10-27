@@ -40,7 +40,7 @@ function okView(): PhonemeViewResult {
 				languageVersion: '1.0.0',
 				name: 'T',
 				description: null,
-				specVersions: Object.freeze({ specVersion: '0.0.1-1', binaryContainerVersion: '0.1.0' })
+				specVersions: Object.freeze({ specVersion: '0.1.0', binaryContainerVersion: '0.1.0' })
 			},
 			phonemeResourcePath: 'Linguistics/phonemes.eld',
 			inventory: Object.freeze({ groups: [], rootCount: 0, allophoneCount: 0, isEmpty: true }),

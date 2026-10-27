@@ -16,9 +16,9 @@
 
 /**
  * Supported ELANG specification version (per docs/sdk-compatibility-policy.md).
- * v0.1.0 of the Hub is only compliant with spec `0.0.1-1`.
+ * v0.1.0 of the Hub is only compliant with spec `0.1.0`.
  */
-export const SUPPORTED_SPEC_VERSION = '0.0.1-1' as const;
+export const SUPPORTED_SPEC_VERSION = '0.1.0' as const;
 
 /**
  * Supported ELANG binary container version.

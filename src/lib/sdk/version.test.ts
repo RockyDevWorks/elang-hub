@@ -2,7 +2,7 @@
  * Tests for the supported-version gate (H0205).
  *
  * v0.1.0 of the Hub only accepts:
- *   - ELANG specification version `0.0.1-1`
+ *   - ELANG specification version `0.1.0`
  *   - ELANG binary container version `0.1.0`
  *
  * Any other combination must be rejected with a typed failure that

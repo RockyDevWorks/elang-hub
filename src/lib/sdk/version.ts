@@ -2,7 +2,7 @@
  * Supported-version gate for the SDK adapter.
  *
  * The Hub v0.1.0 only accepts:
- *   - ELANG specification version `0.0.1-1`
+ *   - ELANG specification version `0.1.0`
  *   - ELANG binary container version `0.1.0`
  *
  * Any other version is a typed failure surfaced to the user with a

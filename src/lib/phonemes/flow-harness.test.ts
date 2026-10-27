@@ -75,7 +75,7 @@ describe('flow harness', () => {
 		expect(envelope).toMatchObject({
 			ok: true,
 			mode: 'validate',
-			specVersion: '0.0.1-1',
+			specVersion: '0.1.0',
 			binaryContainerVersion: '0.1.0',
 			diagnostics: []
 		});

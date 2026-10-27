@@ -218,7 +218,7 @@ describe('SdkClient error paths (H0206, H0207)', () => {
 	});
 
 	it('rejects a response missing the ok flag', async () => {
-		const fetchImpl = vi.fn(async () => jsonResponse({ specVersion: '0.0.1-1' }));
+		const fetchImpl = vi.fn(async () => jsonResponse({ specVersion: '0.1.0' }));
 		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
 		const result = await client.validate(new Uint8Array(10));
 		expect(result.ok).toBe(false);

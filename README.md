@@ -10,7 +10,7 @@
 [![Security](https://img.shields.io/github/actions/workflow/status/RockyDevWorks/elang-hub/security.yml?branch=main&label=Security&style=flat-square)](https://github.com/RockyDevWorks/elang-hub/actions/workflows/security.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/RockyDevWorks/elang-hub/main?label=Coverage&style=flat-square)](https://codecov.io/gh/RockyDevWorks/elang-hub)
 [![Quality Gate](https://img.shields.io/sonar/quality_gate/RockyDevWorks_elang-hub/main?server=https%3A%2F%2Fsonarcloud.io&label=SonarCloud&style=flat-square)](https://sonarcloud.io/project/overview?id=RockyDevWorks_elang-hub)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](https://github.com/RockyDevWorks/elang-rs/blob/main/LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE)
 [![Node](https://img.shields.io/badge/Node-%E2%89%A522.17-339933?logo=node.js&logoColor=white&style=flat-square)](https://nodejs.org/)
 [![Svelte](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white&style=flat-square)](https://svelte.dev/)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-3-FF3E00?logo=svelte&logoColor=white&style=flat-square)](https://kit.svelte.dev/)
@@ -220,6 +220,4 @@ channel, not the Hub.
 
 Licensed under the Apache License, Version 2.0, matching the
 upstream [`elang-rs`](https://github.com/RockyDevWorks/elang-rs)
-SDK. See [`LICENSE`](https://github.com/RockyDevWorks/elang-rs/blob/main/LICENSE)
-in the upstream repository; a top-level `LICENSE` file in this
-repository is planned for the v0.1.0 ship.
+SDK. See [`LICENSE`](LICENSE).

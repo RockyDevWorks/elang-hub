@@ -87,4 +87,76 @@ describe('requestValidation (H0107)', () => {
 			requestValidation(new ArrayBuffer(0), new AbortController().signal)
 		).rejects.toMatchObject(uploadError('VALIDATION_FAILED'));
 	});
+
+	it('maps a 502 to VALIDATION_UNAVAILABLE', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response('{}', { status: 502 }))
+		);
+		await expect(
+			requestValidation(new ArrayBuffer(0), new AbortController().signal)
+		).rejects.toMatchObject(uploadError('VALIDATION_UNAVAILABLE'));
+	});
+
+	it('maps an unrelated error status (e.g. 500) to VALIDATION_FAILED', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response('{}', { status: 500 }))
+		);
+		await expect(
+			requestValidation(new ArrayBuffer(0), new AbortController().signal)
+		).rejects.toMatchObject(uploadError('VALIDATION_FAILED'));
+	});
+
+	it('rejects when the verdict payload is not an object', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(JSON.stringify('nope'), { status: 200 }))
+		);
+		await expect(
+			requestValidation(new ArrayBuffer(0), new AbortController().signal)
+		).rejects.toMatchObject(uploadError('VALIDATION_FAILED'));
+	});
+
+	it('coerces a verdict with non-array diagnostics/messages into empty arrays', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(
+						JSON.stringify({
+							ok: true,
+							diagnostics: 'not-an-array',
+							messages: { not: 'an-array' }
+						}),
+						{ status: 200, headers: { 'content-type': 'application/json' } }
+					)
+			)
+		);
+		const result = await requestValidation(new ArrayBuffer(0), new AbortController().signal);
+		expect(result).toEqual({ ok: true, diagnostics: [], messages: [] });
+	});
+
+	it('filters non-string entries out of diagnostics and messages', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(
+				async () =>
+					new Response(
+						JSON.stringify({
+							ok: true,
+							diagnostics: ['keep', 42, null, 'also-keep'],
+							messages: [{}, 'only-string']
+						}),
+						{ status: 200, headers: { 'content-type': 'application/json' } }
+					)
+			)
+		);
+		const result = await requestValidation(new ArrayBuffer(0), new AbortController().signal);
+		expect(result).toEqual({
+			ok: true,
+			diagnostics: ['keep', 'also-keep'],
+			messages: ['only-string']
+		});
+	});
 });

@@ -316,6 +316,50 @@ describe('SdkClient error paths (H0206, H0207)', () => {
 			expect(hub.code).toBe('internal_error');
 		}
 	});
+
+	it('translates a generic 5xx (e.g. 500) to service_unavailable', async () => {
+		const fetchImpl = vi.fn(async () => new Response('boom', { status: 500 }));
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.code).toBe('service_unavailable');
+		}
+	});
+
+	it('translates an unrecognised client error (e.g. 418) to unknown', async () => {
+		const fetchImpl = vi.fn(async () => new Response('teapot', { status: 418 }));
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.validate(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.code).toBe('unknown');
+			expect(result.message).toContain('418');
+		}
+	});
+
+	it('rejects a verify response missing the version fields', async () => {
+		// The success-boundary fixture omits `verifiedResources` to make
+		// sure the missing-field branch fires a malformed_response
+		// instead of crashing the parser.
+		const fetchImpl = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						ok: true,
+						specVersion: SUPPORTED_SPEC_VERSION
+					}),
+					{ status: 200, headers: { 'content-type': 'application/json' } }
+				)
+		);
+		const client = new SdkClient({ serviceUrl: 'https://svc', fetchImpl });
+		const result = await client.verify(new Uint8Array(10));
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.code).toBe('malformed_response');
+			expect(result.stage).toBe('verify');
+		}
+	});
 });
 
 describe.each(['inspect', 'verify', 'validate'] as const)(

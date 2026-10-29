@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UploadController, type ValidationResult } from './controller';
+import {
+	UploadController,
+	describeSelection,
+	readFile,
+	toUploadError,
+	type UploadState,
+	type ValidationResult
+} from './controller';
+import { uploadError } from './errors';
 
 function file(name: string, size = 1024): File {
 	return new File([new Uint8Array(size)], name, { type: 'application/vnd.elang' });
@@ -243,5 +251,219 @@ describe('UploadController (H0104, H0105, H0106, H0108)', () => {
 		unsubscribe();
 		await controller.select([file('phonemes.elang')], async () => OK);
 		expect(listener).not.toHaveBeenCalled();
+	});
+
+	it('cancel() is a no-op when no run is in flight', () => {
+		const controller = new UploadController();
+		// The state must not change: no file, no error, no progress.
+		const before = controller.state;
+		controller.cancel();
+		expect(controller.state).toBe(before);
+		expect(controller.state.phase).toBe('idle');
+	});
+
+	it('a non-abort error during validate surfaces as VALIDATION_FAILED, not UPLOAD_CANCELLED', async () => {
+		// The signal is not yet aborted, the generation is current,
+		// and the validator throws a plain error (no DOMException).
+		// The catch branch must hit `toUploadError`, not the
+		// `signal.aborted` short-circuit.
+		const controller = new UploadController();
+		await controller.select([file('phonemes.elang')], async () => {
+			throw new TypeError('boom');
+		});
+		expect(controller.state.phase).toBe('error');
+		expect(controller.state.error?.code).toBe('VALIDATION_FAILED');
+	});
+
+	it('dropping the validate result after a replacement upload is a silent no-op', async () => {
+		// Distinct from "ignores a stale result after a replacement
+		// upload": this one exercises the *successful* validate path
+		// where the result has already been computed but a newer
+		// generation has taken over before the post-validate check
+		// runs. The state must reflect the second run, not the first.
+		const controller = new UploadController();
+		let releaseFirst: (result: ValidationResult) => void = () => {};
+
+		const first = controller.select(
+			[file('first.elang')],
+			() =>
+				new Promise<ValidationResult>((resolve) => {
+					releaseFirst = resolve;
+				})
+		);
+		await settle();
+
+		// Second run completes synchronously and bumps the generation.
+		await controller.select([file('second.elang')], async () => OK);
+
+		// Releasing the first validate *now* should see `generation !==
+		// this.#generation` and return without touching state.
+		releaseFirst({ ok: false, diagnostics: ['NOPE'], messages: ['stale'] });
+		await first;
+
+		expect(controller.state.fileName).toBe('second.elang');
+		expect(controller.state.phase).toBe('complete');
+		expect(controller.state.result?.diagnostics).toEqual([]);
+	});
+
+	it('cancel() mid-validate surfaces as UPLOAD_CANCELLED, not VALIDATION_FAILED', async () => {
+		// The validator is in flight; the user cancels. The signal
+		// becomes aborted, but the validator rejects with an
+		// AbortError, so the catch block hits the `signal.aborted`
+		// short-circuit (not `toUploadError`).
+		const controller = new UploadController();
+		let signal: AbortSignal | null = null;
+		const run = controller.select([file('phonemes.elang')], async (_bytes, s) => {
+			signal = s;
+			return await new Promise<ValidationResult>((_resolve, reject) => {
+				s.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+			});
+		});
+		await vi.waitFor(() => {
+			expect(signal).not.toBeNull();
+		});
+
+		controller.cancel();
+		await run;
+
+		expect(controller.state.phase).toBe('error');
+		expect(controller.state.error?.code).toBe('UPLOAD_CANCELLED');
+	});
+});
+
+describe('readFile (H0104)', () => {
+	it('rejects with an AbortError when the signal is already aborted', async () => {
+		const controller = new AbortController();
+		controller.abort();
+		await expect(readFile(file('phonemes.elang'), controller.signal)).rejects.toMatchObject({
+			name: 'AbortError'
+		});
+	});
+
+	it('falls back to arrayBuffer when file.stream is unavailable', async () => {
+		// Some test environments (older Node, polyfills) expose
+		// `arrayBuffer` but not `stream`. The fallback path keeps
+		// the bar visible to the caller.
+		const noStream: File = {
+			name: 'plain.elang',
+			size: 64,
+			type: 'application/vnd.elang',
+			arrayBuffer: () => Promise.resolve(new Uint8Array(64).buffer),
+			stream: undefined
+		} as unknown as File;
+		const controller = new AbortController();
+		const buf = await readFile(noStream, controller.signal);
+		expect(buf.byteLength).toBe(64);
+	});
+
+	it('rejects with FILE_TRUNCATED when the stream yields fewer bytes than the declared size', async () => {
+		// `received !== file.size` after a clean stream end. The
+		// declaration said 16 bytes but only 8 arrived.
+		const shortStream: File = {
+			name: 'short.elang',
+			size: 16,
+			type: 'application/vnd.elang',
+			arrayBuffer: () => Promise.resolve(new ArrayBuffer(16)),
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					start(c) {
+						c.enqueue(new Uint8Array(8));
+						c.close();
+					}
+				})
+		} as unknown as File;
+		const controller = new AbortController();
+		await expect(readFile(shortStream, controller.signal)).rejects.toMatchObject(
+			uploadError('FILE_TRUNCATED')
+		);
+	});
+
+	it('aborts the read loop when the signal is already aborted before the first chunk lands', async () => {
+		// The signal-aborted check at the top of the for-loop fires
+		// even if the stream is open. A pre-aborted signal must
+		// surface as AbortError before any chunk is consumed.
+		const delayed: File = {
+			name: 'delayed.elang',
+			size: 4,
+			type: 'application/vnd.elang',
+			arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					start() {
+						// never enqueues
+					}
+				})
+		} as unknown as File;
+		const controller = new AbortController();
+		controller.abort();
+		await expect(readFile(delayed, controller.signal)).rejects.toMatchObject({
+			name: 'AbortError'
+		});
+	});
+
+	it('treats a zero-byte file as a complete empty stream', async () => {
+		// `file.size === 0` keeps the progress callback from being
+		// called (avoiding 0/0 NaN) but the read still completes.
+		const empty: File = {
+			name: 'empty.elang',
+			size: 0,
+			type: 'application/vnd.elang',
+			arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+			stream: () =>
+				new ReadableStream<Uint8Array>({
+					start(c) {
+						c.close();
+					}
+				})
+		} as unknown as File;
+		const controller = new AbortController();
+		const buf = await readFile(empty, controller.signal);
+		expect(buf.byteLength).toBe(0);
+	});
+});
+
+describe('toUploadError (H0107)', () => {
+	it('passes an existing UploadError through unchanged', () => {
+		const original = uploadError('FILE_TOO_LARGE');
+		expect(toUploadError(original)).toBe(original);
+	});
+
+	it('maps a NotReadableError DOMException to FILE_UNREADABLE', () => {
+		const caught = new DOMException('disk gone', 'NotReadableError');
+		expect(toUploadError(caught)).toMatchObject(uploadError('FILE_UNREADABLE'));
+	});
+
+	it('maps an AbortError DOMException to UPLOAD_CANCELLED', () => {
+		const caught = new DOMException('aborted', 'AbortError');
+		expect(toUploadError(caught)).toMatchObject(uploadError('UPLOAD_CANCELLED'));
+	});
+
+	it('maps a non-upload, non-DOMException value to VALIDATION_FAILED', () => {
+		expect(toUploadError(new Error('boom'))).toMatchObject(uploadError('VALIDATION_FAILED'));
+		expect(toUploadError('plain string')).toMatchObject(uploadError('VALIDATION_FAILED'));
+		expect(toUploadError(null)).toMatchObject(uploadError('VALIDATION_FAILED'));
+	});
+});
+
+describe('describeSelection', () => {
+	const idle: UploadState = {
+		phase: 'idle',
+		fileName: null,
+		fileSize: null,
+		progress: 0,
+		error: null,
+		result: null
+	};
+
+	it('returns "No package selected" when no file is chosen', () => {
+		expect(describeSelection(idle)).toBe('No package selected');
+	});
+
+	it('returns "<name> (<size>)" when a file is selected', async () => {
+		const controller = new UploadController();
+		await controller.select([file('phonemes.elang', 2048)], async () => OK);
+		// `describeSelection` reads the live state, so the assertion
+		// has to come after the run completes.
+		expect(describeSelection(controller.state)).toBe('phonemes.elang (2.0 kB)');
 	});
 });

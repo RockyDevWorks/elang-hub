@@ -95,6 +95,34 @@ describe('toHubError (H0206)', () => {
 		expect(hub.detail).toContain('&lt;script&gt;');
 	});
 
+	it('escapes double quotes in the path so attribute contexts stay safe', () => {
+		const failure: SdkFailure = {
+			ok: false,
+			stage: 'validate',
+			code: 'eld_invalid',
+			message: 'x',
+			path: 'name="onclick"',
+			diagnostics: []
+		};
+		const hub = toHubError(failure);
+		expect(hub.detail).toContain('&quot;');
+		expect(hub.detail).not.toContain('"onclick"');
+	});
+
+	it('escapes single quotes in the path so attribute contexts stay safe', () => {
+		const failure: SdkFailure = {
+			ok: false,
+			stage: 'validate',
+			code: 'eld_invalid',
+			message: 'x',
+			path: "name='onclick'",
+			diagnostics: []
+		};
+		const hub = toHubError(failure);
+		expect(hub.detail).toContain('&#39;');
+		expect(hub.detail).not.toContain("'onclick'");
+	});
+
 	it('strips control characters from the path', () => {
 		const failure: SdkFailure = {
 			ok: false,
